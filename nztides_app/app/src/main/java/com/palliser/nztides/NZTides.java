@@ -24,10 +24,11 @@ public class NZTides extends Activity {
     public static final int MENU_ITEM_CHOOSE_PORT = Menu.FIRST;
     public static final int MENU_ITEM_ABOUT = Menu.FIRST+1;
     public static final String PREFS_NAME = "NZTidesPrefsFile";//file to store prefs
-
+    private static final String PREFS_RECENT_PORTS = "RecentPorts";
+    private static final int RECENT_PORTS_COUNT = 3;
     
     private String currentport;
-   
+    private String[] recentPorts = new String[0];
 
     final private String[] portdisplaynames = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 	
@@ -220,38 +221,89 @@ public class NZTides extends Activity {
         //restore current port from settings file
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         currentport = settings.getString("CurrentPort","Auckland" );
+        loadRecentPorts();
+        
+        // If no recent ports, add the current port
+        if (recentPorts.length == 0) {
+            updateRecentPorts(currentport);
+        }
         
     //    setContentView(R.layout.main);
+    }
+    
+    private void loadRecentPorts() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        String recent = settings.getString(PREFS_RECENT_PORTS, "");
+        if (!recent.isEmpty()) {
+            recentPorts = recent.split(",");
+        } else {
+            recentPorts = new String[0];
+        }
+    }
+
+    private void saveRecentPorts() {
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putString(PREFS_RECENT_PORTS, String.join(",", recentPorts));
+        editor.commit();
+    }
+
+    private void updateRecentPorts(String port) {
+        java.util.LinkedList<String> list = new java.util.LinkedList<>();
+        list.add(port);
+        for (String p : recentPorts) {
+            if (!p.equals(port)) list.add(p);
+        }
+        while (list.size() > RECENT_PORTS_COUNT) list.removeLast();
+        recentPorts = list.toArray(new String[0]);
+        saveRecentPorts();
     }
     
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-
-        SubMenu portMenu = menu.addSubMenu(0, MENU_ITEM_CHOOSE_PORT, 0,"Select Port");
-        for(int k=0;k<portdisplaynames.length;k++)
-            portMenu.add(0,Menu.FIRST+10+k,0,portdisplaynames[k]);
-        
-        menu.add(0, MENU_ITEM_ABOUT, 0,"About" );
-               
-        // Generate any additional actions that can be performed on the
-        // overall list.  In a normal install, there are no additional
-        // actions found here, but this allows other applications to extend
-        // our menu with their own actions.        Intent intent = new Intent(null, getIntent().getData());
-       // intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
-       // menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,                new ComponentName(this, NotesList.class), null, intent, 0, null);
+        int menuIndex = Menu.FIRST;
+        if (recentPorts.length > 0) {
+            for (int i = 0; i < recentPorts.length; i++) {
+                menu.add(0, menuIndex++, 0, recentPorts[i]);
+            }
+            // Add a disabled separator instead of a submenu
+            MenuItem sep = menu.add(0, menuIndex++, 0, "──────────");
+            sep.setEnabled(false);
+        }
+        java.util.HashSet<String> recentSet = new java.util.HashSet<>();
+        for (String p : recentPorts) recentSet.add(p);
+        for (int k = 0; k < portdisplaynames.length; k++) {
+            if (!recentSet.contains(portdisplaynames[k])) {
+                menu.add(0, menuIndex++, 0, portdisplaynames[k]);
+            }
+        }
+        menu.add(0, MENU_ITEM_ABOUT, 0, "About");
         return true;
     }
 
     public boolean  onOptionsItemSelected  (MenuItem  item){
         int id = item.getItemId();
-    
-        if(id>=Menu.FIRST+10 && id<Menu.FIRST+10+portdisplaynames.length){
-            currentport = portdisplaynames[id-11];
-            this.onResume();
-            return true;
+        String title = (String) item.getTitle();
+        // Check if selected port is in recentPorts or portdisplaynames
+        for (String port : portdisplaynames) {
+            if (port.equals(title)) {
+                currentport = port;
+                updateRecentPorts(port);
+                invalidateOptionsMenu(); // Rebuild menu with updated recent ports
+                this.onResume();
+                return true;
+            }
         }
-	        
+        for (String port : recentPorts) {
+            if (port.equals(title)) {
+                currentport = port;
+                updateRecentPorts(port);
+                invalidateOptionsMenu(); // Rebuild menu with updated recent ports
+                this.onResume();
+                return true;
+            }
+        }
     	switch (id) {
     	  case MENU_ITEM_ABOUT:
     		TextView tv = new TextView(this);
@@ -288,8 +340,7 @@ public class NZTides extends Activity {
       SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
       SharedPreferences.Editor editor = settings.edit();
       editor.putString("CurrentPort", currentport);
-
-      // Don't forget to commit your edits!!!
+      editor.putString(PREFS_RECENT_PORTS, String.join(",", recentPorts));
       editor.commit();
     }
 
