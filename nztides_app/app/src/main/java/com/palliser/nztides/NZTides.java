@@ -52,13 +52,13 @@ public class NZTides extends Activity {
 	}
 
 	private String getDayLabel(long timestamp) {
-		SimpleDateFormat dayFormat = new SimpleDateFormat("E");
-		return dayFormat.format(new Date(1000 * timestamp)) + "\n";
+		SimpleDateFormat dayFormat = new SimpleDateFormat("E dd");
+		return dayFormat.format(new Date(1000 * timestamp));
 	}
 
 	private String getMonthLabel(long timestamp) {
 		SimpleDateFormat monthFormat = new SimpleDateFormat("MMM YYYY");
-		return monthFormat.format(new Date(1000 * timestamp)) + "\n";
+		return monthFormat.format(new Date(1000 * timestamp));
 	}
 
 	public String calc_outstring(String port){
@@ -81,9 +81,7 @@ public class NZTides extends Activity {
 		
 	    try {
 		DecimalFormat nformat1 = new DecimalFormat(" 0.00;-0.00");
-		DecimalFormat nformat2 = new DecimalFormat("0.00");
 		DecimalFormat nformat3 = new DecimalFormat("00");
-		DecimalFormat nformat4 = new DecimalFormat(" 0.0;-0.0");
 		SimpleDateFormat dformat = new SimpleDateFormat("HH:mm E dd/MM/yy zzz");
 		SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
 		DataInputStream tidedat = new DataInputStream(am.open(port+".tdat",1));
@@ -157,14 +155,16 @@ public class NZTides extends Activity {
 
 
 				//Start populating outstring
-				outstring.append("[" + port + "] " + nformat4.format(currentht) + "m");
+				DecimalFormat currentHeightFormat = new DecimalFormat(" 0.0;-0.0");
+				outstring.append("[" + port + "] " + currentHeightFormat.format(currentht) + "m");
 				//display up arrow or down arrow depending on weather tide is rising or falling
 				if (hold < h)
 					outstring.append(" \u2191");//up arrow
 				else
 					outstring.append(" \u2193");//down arrow
 
-				outstring.append(nformat2.format(Math.abs(riserate * 100)) + " cm/hr\n");
+				DecimalFormat riseRateFormat = new DecimalFormat("0");
+				outstring.append(riseRateFormat.format(Math.abs(riserate * 100)) + " cm/hr\n");
 				outstring.append("---------------\n");
 
 				int time_to_previous = (nowsecs - told);
@@ -216,7 +216,7 @@ public class NZTides extends Activity {
 				// First tide record
 				String dayLabel = getDayLabel(currentTimestamp);
 				if (!dayLabel.equals(lastDay)) {
-					outstring.append(dayLabel);
+					outstring.append(dayLabel + "\n");
 					lastDay = dayLabel;
 				}
 				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
@@ -229,11 +229,13 @@ public class NZTides extends Activity {
 				String monthLabel = getMonthLabel(currentTimestamp);
 
 				if (!dayLabel.equals(lastDay)) {
-					outstring.append(dayLabel);
 					lastDay = dayLabel;
+					monthLabel = getMonthLabel(currentTimestamp);
 					if(!monthLabel.equals(lastMonth)) {
-						outstring.append(monthLabel);
+						outstring.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
 						lastMonth = monthLabel;
+					} else {
+						outstring.append(dayLabel + "\n");
 					}
 				}
 				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
@@ -246,13 +248,13 @@ public class NZTides extends Activity {
 					
 					dayLabel = getDayLabel(currentTimestamp);
 					if (!dayLabel.equals(lastDay)) {
-						outstring.append(dayLabel);
 						lastDay = dayLabel;
-
 						monthLabel = getMonthLabel(currentTimestamp);
 						if(!monthLabel.equals(lastMonth)) {
-							outstring.append(monthLabel);
+							outstring.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
 							lastMonth = monthLabel;
+						} else {
+							outstring.append(dayLabel + "\n");
 						}
 					}
 					outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
