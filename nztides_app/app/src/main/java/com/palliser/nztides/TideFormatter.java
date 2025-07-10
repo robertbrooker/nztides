@@ -58,6 +58,15 @@ public class TideFormatter {
     }
     
     /**
+     * Format a TideData object for display
+     */
+    public static String formatTideRecord(TideData tideData) {
+        return " " + formatHourMinute(tideData.getTimestamp()) + 
+               (tideData.isHighTide() ? " H " : " L ") + 
+               formatHeight(tideData.getHeight()) + "m\n";
+    }
+    
+    /**
      * Format time duration in hours and minutes
      */
     public static String formatDuration(int seconds) {

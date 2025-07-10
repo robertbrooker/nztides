@@ -63,15 +63,13 @@ public class NZTides extends Activity {
 	/**
 	 * Calculate current tide height and rate using cosine interpolation
 	 */
-	private TideCalculation calculateCurrentTide(int currentTimeSeconds, int previousTideTime, 
-												int nextTideTime, float previousTideHeight, 
-												float nextTideHeight) {
-		double omega = 2 * Math.PI / ((nextTideTime - previousTideTime) * 2);
-		double amplitude = (previousTideHeight - nextTideHeight) / 2;
-		double mean = (nextTideHeight + previousTideHeight) / 2;
+	private TideCalculation calculateCurrentTide(int currentTimeSeconds, TideData previousTide, TideData nextTide) {
+		double omega = 2 * Math.PI / ((nextTide.getTimestamp() - previousTide.getTimestamp()) * 2);
+		double amplitude = (previousTide.getHeight() - nextTide.getHeight()) / 2;
+		double mean = (nextTide.getHeight() + previousTide.getHeight()) / 2;
 		
-		double currentHeight = amplitude * Math.cos(omega * (currentTimeSeconds - previousTideTime)) + mean;
-		double riseRate = -amplitude * omega * Math.sin(omega * (currentTimeSeconds - previousTideTime)) * 3600; // cm/hr
+		double currentHeight = amplitude * Math.cos(omega * (currentTimeSeconds - previousTide.getTimestamp())) + mean;
+		double riseRate = -amplitude * omega * Math.sin(omega * (currentTimeSeconds - previousTide.getTimestamp())) * 3600; // cm/hr
 		
 		return new TideCalculation(currentHeight, riseRate);
 	}
@@ -121,6 +119,7 @@ public class NZTides extends Activity {
 			
 			previousTideTime = swapBytes(tideDataStream.readInt());
 			previousTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
+			
 		if (previousTideTime > currentTimeSeconds) {
 			outputString.append("The first tide in this datafile doesn't occur until ");
 			outputString.append(TideFormatter.formatFullDate(previousTideTime));
@@ -138,6 +137,9 @@ public class NZTides extends Activity {
 					previousTideHeight = nextTideHeight;
 				}
 
+				// Create TideData objects for calculation
+				TideData previousTide = new TideData(previousTideTime, previousTideHeight, false); // tide type determined later
+				TideData nextTide = new TideData(nextTideTime, nextTideHeight, false); // tide type determined later
 
 				// Parameters of cosine wave used to interpolate between tides
 				// We assume that the tides vary cosinusoidally
@@ -161,7 +163,7 @@ public class NZTides extends Activity {
 				}
 
 
-				TideCalculation currentTideCalc = calculateCurrentTide(currentTimeSeconds, previousTideTime, nextTideTime, previousTideHeight, nextTideHeight);
+				TideCalculation currentTideCalc = calculateCurrentTide(currentTimeSeconds, previousTide, nextTide);
 
 				// Start populating output string
 				DecimalFormat currentHeightFormat = new DecimalFormat(" 0.0;-0.0");
@@ -376,29 +378,29 @@ public class NZTides extends Activity {
 								   int previousTideTime, float previousTideHeight,
 								   int nextTideTime, float nextTideHeight) throws IOException {
 		String lastDay = "";
-		long currentTimestamp = previousTideTime;
-		float currentHeight = previousTideHeight;
-		boolean currentIsHigh = !(nextTideHeight > previousTideHeight);
-		String lastMonth = TideFormatter.formatMonth(currentTimestamp);
+		
+		// Create first two tide records
+		boolean firstIsHigh = !(nextTideHeight > previousTideHeight);
+		TideData firstTide = new TideData(previousTideTime, previousTideHeight, firstIsHigh);
+		TideData secondTide = new TideData(nextTideTime, nextTideHeight, !firstIsHigh);
+		
+		String lastMonth = TideFormatter.formatMonth(firstTide.getTimestamp());
 
 		// First tide record
-		String dayLabel = TideFormatter.formatDay(currentTimestamp);
+		String dayLabel = TideFormatter.formatDay(firstTide.getTimestamp());
 		if (!dayLabel.equals(lastDay)) {
 			outputString.append(dayLabel + "\n");
 			lastDay = dayLabel;
 		}
-		outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+		outputString.append(TideFormatter.formatTideRecord(firstTide));
 
 		// Second tide record  
-		currentTimestamp = nextTideTime;
-		currentHeight = nextTideHeight;
-		currentIsHigh = (nextTideHeight > previousTideHeight);
-		dayLabel = TideFormatter.formatDay(currentTimestamp);
-		String monthLabel = TideFormatter.formatMonth(currentTimestamp);
+		dayLabel = TideFormatter.formatDay(secondTide.getTimestamp());
+		String monthLabel = TideFormatter.formatMonth(secondTide.getTimestamp());
 
 		if (!dayLabel.equals(lastDay)) {
 			lastDay = dayLabel;
-			monthLabel = TideFormatter.formatMonth(currentTimestamp);
+			monthLabel = TideFormatter.formatMonth(secondTide.getTimestamp());
 			if (!monthLabel.equals(lastMonth)) {
 				outputString.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
 				lastMonth = monthLabel;
@@ -406,18 +408,18 @@ public class NZTides extends Activity {
 				outputString.append(dayLabel + "\n");
 			}
 		}
-		outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+		outputString.append(TideFormatter.formatTideRecord(secondTide));
 
 		// Remaining tide records
+		boolean currentIsHigh = secondTide.isHighTide();
 		for (int k = 0; k < RECORDS_TO_DISPLAY; k++) {
 			currentIsHigh = !currentIsHigh;
-			currentTimestamp = swapBytes(tideDataStream.readInt());
-			currentHeight = (float) (tideDataStream.readByte()) / 10.0f;
+			TideData currentTide = TideDataReader.readFromStream(tideDataStream).withTideType(currentIsHigh);
 			
-			dayLabel = TideFormatter.formatDay(currentTimestamp);
+			dayLabel = TideFormatter.formatDay(currentTide.getTimestamp());
 			if (!dayLabel.equals(lastDay)) {
 				lastDay = dayLabel;
-				monthLabel = TideFormatter.formatMonth(currentTimestamp);
+				monthLabel = TideFormatter.formatMonth(currentTide.getTimestamp());
 				if (!monthLabel.equals(lastMonth)) {
 					outputString.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
 					lastMonth = monthLabel;
@@ -425,7 +427,7 @@ public class NZTides extends Activity {
 					outputString.append(dayLabel + "\n");
 				}
 			}
-			outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+			outputString.append(TideFormatter.formatTideRecord(currentTide));
 		}
 	}
 }

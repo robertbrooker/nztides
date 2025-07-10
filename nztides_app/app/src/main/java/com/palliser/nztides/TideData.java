@@ -14,6 +14,13 @@ public class TideData {
         this.isHighTide = isHighTide;
     }
     
+    /**
+     * Creates a new TideData with the specified high/low tide flag
+     */
+    public TideData withTideType(boolean isHighTide) {
+        return new TideData(this.timestamp, this.height, isHighTide);
+    }
+    
     public long getTimestamp() {
         return timestamp;
     }
