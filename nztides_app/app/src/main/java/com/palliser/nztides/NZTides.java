@@ -42,13 +42,32 @@ public class NZTides extends Activity {
 	  return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
 	}
 
+	private String formatLine(float height, boolean isHighTide, long timestamp, DecimalFormat nformat1, SimpleDateFormat dformat) {
+		return nformat1.format(height) + (isHighTide ? " H " : " L ") + dformat.format(new Date(1000 * timestamp)) + '\n';
+	}
+
+	private String formatTideRecord(float height, boolean isHighTide, long timestamp, DecimalFormat nformat1, SimpleDateFormat timeFormat) {
+		// Format: " HH:mm H/L height"
+		return " " + timeFormat.format(new Date(1000 * timestamp)) + (isHighTide ? " H " : " L ") + nformat1.format(height) + "m\n";
+	}
+
+	private String getDayLabel(long timestamp) {
+		SimpleDateFormat dayFormat = new SimpleDateFormat("E");
+		return dayFormat.format(new Date(1000 * timestamp)) + "\n";
+	}
+
+	private String getMonthLabel(long timestamp) {
+		SimpleDateFormat monthFormat = new SimpleDateFormat("MMM YYYY");
+		return monthFormat.format(new Date(1000 * timestamp)) + "\n";
+	}
+
 	public String calc_outstring(String port){
 	       
 		AssetManager am = getAssets();
 		StringBuffer outstring =  new StringBuffer("");
 	        
-		int num_rows=8;
-	    int num_cols=34;
+		int num_rows=10;
+	    int num_cols=40;
 		int t = 0,told;
 		float h=0;
 		float hold;
@@ -61,17 +80,13 @@ public class NZTides extends Activity {
 		
 		
 	    try {
-
-			DecimalFormat nformat1 = new DecimalFormat(" 0.00;-0.00");
-			DecimalFormat nformat2 = new DecimalFormat("0.00");
-			DecimalFormat nformat3 = new DecimalFormat("00");
-			DecimalFormat nformat4 = new DecimalFormat(" 0.0;-0.0");
-			//SimpleDateFormat dformat = new SimpleDateFormat(
-			//    	"HH:mm E dd-MM-yyyy zzz");
-			SimpleDateFormat dformat = new SimpleDateFormat(
-					"HH:mm E dd/MM/yy zzz");
-
-	    	DataInputStream tidedat = new DataInputStream(am.open(port+".tdat",1));
+		DecimalFormat nformat1 = new DecimalFormat(" 0.00;-0.00");
+		DecimalFormat nformat2 = new DecimalFormat("0.00");
+		DecimalFormat nformat3 = new DecimalFormat("00");
+		DecimalFormat nformat4 = new DecimalFormat(" 0.0;-0.0");
+		SimpleDateFormat dformat = new SimpleDateFormat("HH:mm E dd/MM/yy zzz");
+		SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+		DataInputStream tidedat = new DataInputStream(am.open(port+".tdat",1));
 
 
 			String stationname_tofu = tidedat.readLine(); //stationname with unicode stuff ups
@@ -149,7 +164,7 @@ public class NZTides extends Activity {
 				else
 					outstring.append(" \u2193");//down arrow
 
-				outstring.append(nformat2.format(Math.abs(riserate)) + "m/hr\n");
+				outstring.append(nformat2.format(Math.abs(riserate * 100)) + " cm/hr\n");
 				outstring.append("---------------\n");
 
 				int time_to_previous = (nowsecs - told);
@@ -191,17 +206,56 @@ public class NZTides extends Activity {
 				//outstring.append("---------------\n");
 				outstring.append("\n");
 
+				// Display tide records grouped by day
+				String lastDay = "";
+				long currentTimestamp = told;
+				float currentHeight = hold;
+				boolean currentIsHigh = !hightidenext;
+				String lastMonth = getMonthLabel(currentTimestamp);
 
-				hightidenext = !hightidenext;
-				outstring.append(nformat1.format(hold) + (hightidenext ? " H " : " L ") + dformat.format(new Date(1000 * (long) told)) + '\n');
-				hightidenext = !hightidenext;
-				outstring.append(nformat1.format(h) + (hightidenext ? " H " : " L ") + dformat.format(new Date(1000 * (long) t)) + '\n');
+				// First tide record
+				String dayLabel = getDayLabel(currentTimestamp);
+				if (!dayLabel.equals(lastDay)) {
+					outstring.append(dayLabel);
+					lastDay = dayLabel;
+				}
+				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
 
+				// Second tide record  
+				currentTimestamp = t;
+				currentHeight = h;
+				currentIsHigh = hightidenext;
+				dayLabel = getDayLabel(currentTimestamp);
+				String monthLabel = getMonthLabel(currentTimestamp);
+
+				if (!dayLabel.equals(lastDay)) {
+					outstring.append(dayLabel);
+					lastDay = dayLabel;
+					if(!monthLabel.equals(lastMonth)) {
+						outstring.append(monthLabel);
+						lastMonth = monthLabel;
+					}
+				}
+				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
+
+				// Remaining tide records
 				for (int k = 0; k < 35 * 4; k++) {
-					hightidenext = !hightidenext;
-					t = swap(tidedat.readInt());
-					h = (float) (tidedat.readByte()) / (float) (10.0);
-					outstring.append(nformat1.format(h) + (hightidenext ? " H " : " L ") + dformat.format(new Date(1000 * (long) t)) + '\n');
+					currentIsHigh = !currentIsHigh;
+					currentTimestamp = swap(tidedat.readInt());
+					currentHeight = (float) (tidedat.readByte()) / (float) (10.0);
+					
+					dayLabel = getDayLabel(currentTimestamp);
+					if (!dayLabel.equals(lastDay)) {
+						outstring.append(dayLabel);
+						lastDay = dayLabel;
+
+						monthLabel = getMonthLabel(currentTimestamp);
+						if(!monthLabel.equals(lastMonth)) {
+							outstring.append(monthLabel);
+							lastMonth = monthLabel;
+						}
+					}
+					outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
 				}
 				outstring.append("The last tide in this datafile occurs at:\n");
 				outstring.append(dformat.format(new Date(1000 * (long) lasttide)));
