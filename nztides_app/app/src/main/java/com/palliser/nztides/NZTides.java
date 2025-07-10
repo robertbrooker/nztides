@@ -2,20 +2,20 @@ package com.palliser.nztides;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedList;
+import java.util.HashSet;
+import java.util.Locale;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.SubMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -27,246 +27,175 @@ public class NZTides extends Activity {
     private static final String PREFS_RECENT_PORTS = "RecentPorts";
     private static final int RECENT_PORTS_COUNT = 3;
     
-    private String currentport;
+    private String currentPort;
     private String[] recentPorts = new String[0];
 
-    final private String[] portdisplaynames = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
+    private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 	
-	public static int swap (int value)
-	{
-	  int b1 = (value >>  0) & 0xff;
-	  int b2 = (value >>  8) & 0xff;
-	  int b3 = (value >> 16) & 0xff;
-	  int b4 = (value >> 24) & 0xff;
+	public static int swapBytes(int value) {
+		int b1 = (value >>  0) & 0xff;
+		int b2 = (value >>  8) & 0xff;
+		int b3 = (value >> 16) & 0xff;
+		int b4 = (value >> 24) & 0xff;
 
-	  return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
+		return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
 	}
 
 	private String formatLine(float height, boolean isHighTide, long timestamp, DecimalFormat nformat1, SimpleDateFormat dformat) {
 		return nformat1.format(height) + (isHighTide ? " H " : " L ") + dformat.format(new Date(1000 * timestamp)) + '\n';
 	}
 
-	private String formatTideRecord(float height, boolean isHighTide, long timestamp, DecimalFormat nformat1, SimpleDateFormat timeFormat) {
+	private String formatTideRecord(float height, boolean isHighTide, long timestamp, DecimalFormat heightFormat, SimpleDateFormat timeFormat) {
 		// Format: " HH:mm H/L height"
-		return " " + timeFormat.format(new Date(1000 * timestamp)) + (isHighTide ? " H " : " L ") + nformat1.format(height) + "m\n";
+		return " " + timeFormat.format(new Date(1000 * timestamp)) + (isHighTide ? " H " : " L ") + heightFormat.format(height) + "m\n";
 	}
 
 	private String getDayLabel(long timestamp) {
-		SimpleDateFormat dayFormat = new SimpleDateFormat("E dd");
+		SimpleDateFormat dayFormat = new SimpleDateFormat("E dd", Locale.getDefault());
 		return dayFormat.format(new Date(1000 * timestamp));
 	}
 
 	private String getMonthLabel(long timestamp) {
-		SimpleDateFormat monthFormat = new SimpleDateFormat("MMM YYYY");
+		SimpleDateFormat monthFormat = new SimpleDateFormat("MMM yyyy", Locale.getDefault());
 		return monthFormat.format(new Date(1000 * timestamp));
 	}
 
-	public String calc_outstring(String port){
-	       
-		AssetManager am = getAssets();
-		StringBuffer outstring =  new StringBuffer("");
-	        
-		int num_rows=10;
-	    int num_cols=40;
-		int t = 0,told;
-		float h=0;
-		float hold;
-		Date now = new Date();
-		int nowsecs = (int)(now.getTime()/1000);
-		int lasttide;
-		char [][] graph = new char[num_rows][num_cols+1];
+	/**
+	 * Calculate current tide height and rate using cosine interpolation
+	 */
+	private TideCalculation calculateCurrentTide(int currentTimeSeconds, int previousTideTime, 
+												int nextTideTime, float previousTideHeight, 
+												float nextTideHeight) {
+		double omega = 2 * Math.PI / ((nextTideTime - previousTideTime) * 2);
+		double amplitude = (previousTideHeight - nextTideHeight) / 2;
+		double mean = (nextTideHeight + previousTideHeight) / 2;
+		
+		double currentHeight = amplitude * Math.cos(omega * (currentTimeSeconds - previousTideTime)) + mean;
+		double riseRate = -amplitude * omega * Math.sin(omega * (currentTimeSeconds - previousTideTime)) * 3600; // cm/hr
+		
+		return new TideCalculation(currentHeight, riseRate);
+	}
+	
+	/**
+	 * Inner class to hold tide calculation results
+	 */
+	private static class TideCalculation {
+		final double height;
+		final double riseRate;
+		
+		TideCalculation(double height, double riseRate) {
+			this.height = height;
+			this.riseRate = riseRate;
+		}
+	}
+
+	// Constants for ASCII art graph
+	private static final int GRAPH_ROWS = 10;
+	private static final int GRAPH_COLS = 40;
+	private static final int RECORDS_TO_DISPLAY = 35 * 4; // About 35 days of tides
+	
+	public String calculateTideOutput(String port) {
+		AssetManager assetManager = getAssets();
+		StringBuilder outputString = new StringBuilder();
+		
+		int nextTideTime = 0, previousTideTime;
+		float nextTideHeight = 0;
+		float previousTideHeight;
+		Date currentTime = new Date();
+		int currentTimeSeconds = (int)(currentTime.getTime() / 1000);
+		int lastTideInFile;
+		char[][] tideGraph = new char[GRAPH_ROWS][GRAPH_COLS + 1];
 
 
 		
 		
-	    try {
-		DecimalFormat nformat1 = new DecimalFormat(" 0.00;-0.00");
-		DecimalFormat nformat3 = new DecimalFormat("00");
-		SimpleDateFormat dformat = new SimpleDateFormat("HH:mm E dd/MM/yy zzz");
-		SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-		DataInputStream tidedat = new DataInputStream(am.open(port+".tdat",1));
+		try (DataInputStream tideDataStream = new DataInputStream(assetManager.open(port + ".tdat", 1))) {
+			// Read station name (currently not used due to encoding issues)
+			String stationNameRaw = tideDataStream.readLine();
+			
+			// Read timestamp for last tide in datafile
+			lastTideInFile = swapBytes(tideDataStream.readInt());
+			
+			// Skip number of records in datafile
+			tideDataStream.readInt();
+			
+			previousTideTime = swapBytes(tideDataStream.readInt());
+			previousTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
+		if (previousTideTime > currentTimeSeconds) {
+			outputString.append("The first tide in this datafile doesn't occur until ");
+			outputString.append(TideFormatter.formatFullDate(previousTideTime));
+			outputString.append(". The app should start working properly about then.");
+		} else {
 
-
-			String stationname_tofu = tidedat.readLine(); //stationname with unicode stuff ups
-	       // byte[] stationnamebytes = stationname_tofu.getBytes(Charset.defaultCharset());
-			//String stationname = new String(stationnamebytes, "UTF-8");
-	    	//read timestamp for last tide in datafile
-	    	lasttide = swap(tidedat.readInt());
-	    	 
-	    	//nrecs = swap(tidedat.readInt()); //Number of records in datafile
-	        tidedat.readInt(); //Read number of records in datafile
-	       
-	    	told = swap(tidedat.readInt());
-	        hold = (float) (tidedat.readByte())/(float)(10.0);
-
-			if(told>nowsecs){
-				outstring.append("The first tide in this datafile doesn't occur until ");
-				outstring.append(dformat.format(new Date(1000*(long)told)));
-				outstring.append(". The app should start working properly about then.");
-			} else {
-
-				//look thru tidedatfile for current time
-				for (; ; ) {
-					t = swap(tidedat.readInt());
-					h = (float) (tidedat.readByte()) / (float) (10.0);
-					if (t > nowsecs) {
+				// Look through tide data file for current time
+				while (true) {
+					nextTideTime = swapBytes(tideDataStream.readInt());
+					nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
+					if (nextTideTime > currentTimeSeconds) {
 						break;
 					}
-					told = t;
-					hold = h;
+					previousTideTime = nextTideTime;
+					previousTideHeight = nextTideHeight;
 				}
 
 
-				//parameters of cosine wave used to interpolate between tides
-				//We assume that the tides vaires cosinusoidally
-				//between the last tide and the next one
-				//see NZ Nautical almanac for more details,
-				double omega = 2 * Math.PI / ((t - told) * 2);
-				double amp = (hold - h) / 2;
-				double mn = (h + hold) / 2;
+				// Parameters of cosine wave used to interpolate between tides
+				// We assume that the tides vary cosinusoidally
+				// between the last tide and the next one
+				// See NZ Nautical almanac for more details
+				double omega = 2 * Math.PI / ((nextTideTime - previousTideTime) * 2);
+				double amplitude = (previousTideHeight - nextTideHeight) / 2;
+				double mean = (nextTideHeight + previousTideHeight) / 2;
 				double x, phase;
 
-				// make ascii art plot
-
-				for (int k = 0; k < num_rows; k++) {
-					for (int j = 0; j < num_cols; j++) {
-						graph[k][j] = ' ';
-					}
-					graph[k][num_cols] = '\n';
-				}
-
-				for (int k = 0; k < num_cols; k++) {
-					x = (1.0 + (hold > h ? -1 : 1) * Math.sin(k * 2 * Math.PI / (num_cols - 1))) / 2.0;
-					x = ((num_rows - 1) * x + 0.5);
-					graph[(int) x][k] = '*';
-					//graph[k%num_rows][k]='*';
-				}
-
-				phase = omega * (nowsecs - told);
+				// Create ASCII art plot
+				initialiseGraph(tideGraph);
+				createTideGraph(tideGraph, previousTideHeight, nextTideHeight);
+				
+				// Mark current time position on graph
+				phase = omega * (currentTimeSeconds - previousTideTime);
 				x = (phase + Math.PI / 2) / (2.0 * Math.PI);
-				x = ((num_cols - 1) * x + 0.5);
-				for (int j = 0; j < num_rows; j++) {
-					graph[j][(int) x] = '|';
+				x = ((GRAPH_COLS - 1) * x + 0.5);
+				for (int j = 0; j < GRAPH_ROWS; j++) {
+					tideGraph[j][(int) x] = '|';
 				}
 
 
-				double currentht = amp * Math.cos(omega * (nowsecs - told)) + mn;
-				double riserate = -amp * omega * Math.sin(omega * (nowsecs - told)) * 60 * 60;
+				TideCalculation currentTideCalc = calculateCurrentTide(currentTimeSeconds, previousTideTime, nextTideTime, previousTideHeight, nextTideHeight);
 
-
-				//Start populating outstring
+				// Start populating output string
 				DecimalFormat currentHeightFormat = new DecimalFormat(" 0.0;-0.0");
-				outstring.append("[" + port + "] " + currentHeightFormat.format(currentht) + "m");
-				//display up arrow or down arrow depending on weather tide is rising or falling
-				if (hold < h)
-					outstring.append(" \u2191");//up arrow
+				outputString.append("[" + port + "] " + currentHeightFormat.format(currentTideCalc.height) + "m");
+				
+				// Display up arrow or down arrow depending on whether tide is rising or falling
+				if (previousTideHeight < nextTideHeight)
+					outputString.append(" \u2191"); // up arrow
 				else
-					outstring.append(" \u2193");//down arrow
+					outputString.append(" \u2193"); // down arrow
 
 				DecimalFormat riseRateFormat = new DecimalFormat("0");
-				outstring.append(riseRateFormat.format(Math.abs(riserate * 100)) + " cm/hr\n");
-				outstring.append("---------------\n");
+				outputString.append(riseRateFormat.format(Math.abs(currentTideCalc.riseRate * 100)) + " cm/hr\n");
+				outputString.append("---------------\n");
 
-				int time_to_previous = (nowsecs - told);
-				int time_to_next = (t - nowsecs);
-				boolean hightidenext = (h > hold);
+				displayTideTimings(outputString, currentTimeSeconds, previousTideTime, nextTideTime, previousTideHeight, nextTideHeight);
+				outputString.append("\n");
 
-				if (time_to_previous < time_to_next) {
-					if (hightidenext) {
-						outstring.append("Low tide (" + hold + "m) " + (int) (time_to_previous / 3600) +
-								"h" + nformat3.format((int) (time_to_previous / 60) % 60) + "m ago\n");
-					} else {
-						outstring.append("High tide (" + hold + "m) " + (int) (time_to_previous / 3600) +
-								"h" + nformat3.format((int) (time_to_previous / 60) % 60) + "m ago\n");
-					}
-				} else {
-					if (hightidenext) {
-						outstring.append("High tide (" + h + "m) in " + (int) (time_to_next / 3600) +
-								"h" + nformat3.format((int) (time_to_next / 60) % 60) + "m\n");
-					} else {
-						outstring.append("Low tide (" + h + "m) in " + (int) (time_to_next / 3600) +
-								"h" + nformat3.format((int) (time_to_next / 60) % 60) + "m\n");
-					}
-
-				}
-				//outstring.append("---------------\n");
-				//int num_minutes=(int)((nowsecs-told)/(60));
-				//outstring.append("Last tide " + hold + "m,    "+num_minutes/60  + "h" +nformat3.format(num_minutes%60) +"m ago\n");
-				//num_minutes=(int)((t -nowsecs)/(60));
-				//outstring.append("Next tide " + h + "m, in " +num_minutes/60  + "h" +nformat3.format(num_minutes%60) +"m\n");
-				//outstring.append("---------------\n");
-				outstring.append("\n");
-
-				for (int k = 0; k < num_rows; k++) {
-					for (int j = 0; j < num_cols + 1; j++) {
-						outstring.append(graph[k][j]);
+				// Display ASCII tide graph
+				for (int row = 0; row < GRAPH_ROWS; row++) {
+					for (int col = 0; col < GRAPH_COLS + 1; col++) {
+						outputString.append(tideGraph[row][col]);
 					}
 				}
-
-				//outstring.append("---------------\n");
-				outstring.append("\n");
-
-				// Display tide records grouped by day
-				String lastDay = "";
-				long currentTimestamp = told;
-				float currentHeight = hold;
-				boolean currentIsHigh = !hightidenext;
-				String lastMonth = getMonthLabel(currentTimestamp);
-
-				// First tide record
-				String dayLabel = getDayLabel(currentTimestamp);
-				if (!dayLabel.equals(lastDay)) {
-					outstring.append(dayLabel + "\n");
-					lastDay = dayLabel;
-				}
-				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
-
-				// Second tide record  
-				currentTimestamp = t;
-				currentHeight = h;
-				currentIsHigh = hightidenext;
-				dayLabel = getDayLabel(currentTimestamp);
-				String monthLabel = getMonthLabel(currentTimestamp);
-
-				if (!dayLabel.equals(lastDay)) {
-					lastDay = dayLabel;
-					monthLabel = getMonthLabel(currentTimestamp);
-					if(!monthLabel.equals(lastMonth)) {
-						outstring.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
-						lastMonth = monthLabel;
-					} else {
-						outstring.append(dayLabel + "\n");
-					}
-				}
-				outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
-
-				// Remaining tide records
-				for (int k = 0; k < 35 * 4; k++) {
-					currentIsHigh = !currentIsHigh;
-					currentTimestamp = swap(tidedat.readInt());
-					currentHeight = (float) (tidedat.readByte()) / (float) (10.0);
-					
-					dayLabel = getDayLabel(currentTimestamp);
-					if (!dayLabel.equals(lastDay)) {
-						lastDay = dayLabel;
-						monthLabel = getMonthLabel(currentTimestamp);
-						if(!monthLabel.equals(lastMonth)) {
-							outstring.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
-							lastMonth = monthLabel;
-						} else {
-							outstring.append(dayLabel + "\n");
-						}
-					}
-					outstring.append(formatTideRecord(currentHeight, currentIsHigh, currentTimestamp, nformat1, timeFormat));
-				}
-				outstring.append("The last tide in this datafile occurs at:\n");
-				outstring.append(dformat.format(new Date(1000 * (long) lasttide)));
-			}
+				outputString.append("\n");			// Display tide records grouped by day
+			displayTideRecords(outputString, tideDataStream, previousTideTime, previousTideHeight, nextTideTime, nextTideHeight);
+			outputString.append("The last tide in this datafile occurs at:\n");
+			outputString.append(TideFormatter.formatFullDate(lastTideInFile));
+		}
 	            
-	        }catch (IOException e) {
-	        	outstring.append("Problem reading tide data\n\n Try selecting the port again, some times the ports available change with and upgrade. If this doesn't work it is either because the tide data is out of date or you've found some bug, try looking for an update.");
-	        }
-	        return outstring.toString();
+		} catch (IOException e) {
+			outputString.append("Problem reading tide data\n\nTry selecting the port again, sometimes the ports available change with an upgrade. If this doesn't work it is either because the tide data is out of date or you've found some bug, try looking for an update.");
+		}
+		return outputString.toString();
 	}
 	
     /** Called when the activity is first created. */
@@ -274,15 +203,17 @@ public class NZTides extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //restore current port from settings file
+        // Restore current port from settings file
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-        currentport = settings.getString("CurrentPort","Auckland" );
+        currentPort = settings.getString("CurrentPort", "Auckland");
         loadRecentPorts();
         
         // If no recent ports, add the current port
         if (recentPorts.length == 0) {
-            updateRecentPorts(currentport);
+            updateRecentPorts(currentPort);
         }
+        
+        setContentView(R.layout.main);
         
     //    setContentView(R.layout.main);
     }
@@ -305,7 +236,7 @@ public class NZTides extends Activity {
     }
 
     private void updateRecentPorts(String port) {
-        java.util.LinkedList<String> list = new java.util.LinkedList<>();
+        LinkedList<String> list = new LinkedList<>();
         list.add(port);
         for (String p : recentPorts) {
             if (!p.equals(port)) list.add(p);
@@ -327,11 +258,11 @@ public class NZTides extends Activity {
             MenuItem sep = menu.add(0, menuIndex++, 0, "──────────");
             sep.setEnabled(false);
         }
-        java.util.HashSet<String> recentSet = new java.util.HashSet<>();
+        HashSet<String> recentSet = new HashSet<>();
         for (String p : recentPorts) recentSet.add(p);
-        for (int k = 0; k < portdisplaynames.length; k++) {
-            if (!recentSet.contains(portdisplaynames[k])) {
-                menu.add(0, menuIndex++, 0, portdisplaynames[k]);
+        for (int k = 0; k < PORT_DISPLAY_NAMES.length; k++) {
+            if (!recentSet.contains(PORT_DISPLAY_NAMES[k])) {
+                menu.add(0, menuIndex++, 0, PORT_DISPLAY_NAMES[k]);
             }
         }
         menu.add(0, MENU_ITEM_ABOUT, 0, "About");
@@ -342,9 +273,9 @@ public class NZTides extends Activity {
         int id = item.getItemId();
         String title = (String) item.getTitle();
         // Check if selected port is in recentPorts or portdisplaynames
-        for (String port : portdisplaynames) {
+        for (String port : PORT_DISPLAY_NAMES) {
             if (port.equals(title)) {
-                currentport = port;
+                currentPort = port;
                 updateRecentPorts(port);
                 invalidateOptionsMenu(); // Rebuild menu with updated recent ports
                 this.onResume();
@@ -353,7 +284,7 @@ public class NZTides extends Activity {
         }
         for (String port : recentPorts) {
             if (port.equals(title)) {
-                currentport = port;
+                currentPort = port;
                 updateRecentPorts(port);
                 invalidateOptionsMenu(); // Rebuild menu with updated recent ports
                 this.onResume();
@@ -363,12 +294,10 @@ public class NZTides extends Activity {
     	switch (id) {
     	  case MENU_ITEM_ABOUT:
     		TextView tv = new TextView(this);
-    		//tv.setTypeface(Typeface.MONOSPACE);
-    		tv.setText(R.string.AboutString);//+now.format2445());
+    		tv.setText(R.string.AboutString);
     		ScrollView sv = new ScrollView(this);
     		sv.addView(tv);
     		setContentView(sv);   
-    	    //quit();
     	    return true;
     	  default:
     	    return super.onOptionsItemSelected(item);
@@ -376,29 +305,127 @@ public class NZTides extends Activity {
     	}
     
     @Override
-    protected void onResume(){
-        String outstring = calc_outstring(currentport);
-        TextView tv = new TextView(this);
-        tv.setTypeface(Typeface.MONOSPACE);
-        tv.setText(outstring);//+now.format2445());
-        ScrollView sv = new ScrollView(this);
-        sv.addView(tv);
-        setContentView(sv);   
-    	super.onResume();
+    protected void onResume() {
+        super.onResume();
+        setContentView(R.layout.main);
+        
+        TextView tideTextView = findViewById(R.id.tide_text_view);
+        String outputString = calculateTideOutput(currentPort);
+        tideTextView.setText(outputString);
     }
 
     @Override
     protected void onStop(){
        super.onStop();
     
-      // Save user preferences. We need an Editor object to
-      // make changes. All objects are from android.context.Context
-      SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-      SharedPreferences.Editor editor = settings.edit();
-      editor.putString("CurrentPort", currentport);
-      editor.putString(PREFS_RECENT_PORTS, String.join(",", recentPorts));
-      editor.commit();
+        // Save user preferences
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        SharedPreferences.Editor editor = settings.edit();
+        editor.putString("CurrentPort", currentPort);
+        editor.putString(PREFS_RECENT_PORTS, String.join(",", recentPorts));
+        editor.commit();
     }
 
+    private void initialiseGraph(char[][] graph) {
+		for (int row = 0; row < GRAPH_ROWS; row++) {
+			for (int col = 0; col < GRAPH_COLS; col++) {
+				graph[row][col] = ' ';
+			}
+			graph[row][GRAPH_COLS] = '\n';
+		}
+	}
+	
+	private void createTideGraph(char[][] graph, float previousHeight, float nextHeight) {
+		for (int k = 0; k < GRAPH_COLS; k++) {
+			double x = (1.0 + (previousHeight > nextHeight ? -1 : 1) * 
+					   Math.sin(k * 2 * Math.PI / (GRAPH_COLS - 1))) / 2.0;
+			x = ((GRAPH_ROWS - 1) * x + 0.5);
+			graph[(int) x][k] = '*';
+		}
+	}
 
+	/**
+	 * Display timing information for tides
+	 */
+	private void displayTideTimings(StringBuilder outputString, int currentTimeSeconds, 
+								   int previousTideTime, int nextTideTime, 
+								   float previousTideHeight, float nextTideHeight) {
+		int timeToPrevious = (currentTimeSeconds - previousTideTime);
+		int timeToNext = (nextTideTime - currentTimeSeconds);
+		boolean isHighTideNext = (nextTideHeight > previousTideHeight);
+
+		if (timeToPrevious < timeToNext) {
+			if (isHighTideNext) {
+				outputString.append("Low tide (" + previousTideHeight + "m) " + TideFormatter.formatDuration(timeToPrevious) + " ago\n");
+			} else {
+				outputString.append("High tide (" + previousTideHeight + "m) " + TideFormatter.formatDuration(timeToPrevious) + " ago\n");
+			}
+		} else {
+			if (isHighTideNext) {
+				outputString.append("High tide (" + nextTideHeight + "m) in " + TideFormatter.formatDuration(timeToNext) + "\n");
+			} else {
+				outputString.append("Low tide (" + nextTideHeight + "m) in " + TideFormatter.formatDuration(timeToNext) + "\n");
+			}
+		}
+	}
+	
+	/**
+	 * Display tide records grouped by day
+	 */
+	private void displayTideRecords(StringBuilder outputString, DataInputStream tideDataStream,
+								   int previousTideTime, float previousTideHeight,
+								   int nextTideTime, float nextTideHeight) throws IOException {
+		String lastDay = "";
+		long currentTimestamp = previousTideTime;
+		float currentHeight = previousTideHeight;
+		boolean currentIsHigh = !(nextTideHeight > previousTideHeight);
+		String lastMonth = TideFormatter.formatMonth(currentTimestamp);
+
+		// First tide record
+		String dayLabel = TideFormatter.formatDay(currentTimestamp);
+		if (!dayLabel.equals(lastDay)) {
+			outputString.append(dayLabel + "\n");
+			lastDay = dayLabel;
+		}
+		outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+
+		// Second tide record  
+		currentTimestamp = nextTideTime;
+		currentHeight = nextTideHeight;
+		currentIsHigh = (nextTideHeight > previousTideHeight);
+		dayLabel = TideFormatter.formatDay(currentTimestamp);
+		String monthLabel = TideFormatter.formatMonth(currentTimestamp);
+
+		if (!dayLabel.equals(lastDay)) {
+			lastDay = dayLabel;
+			monthLabel = TideFormatter.formatMonth(currentTimestamp);
+			if (!monthLabel.equals(lastMonth)) {
+				outputString.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
+				lastMonth = monthLabel;
+			} else {
+				outputString.append(dayLabel + "\n");
+			}
+		}
+		outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+
+		// Remaining tide records
+		for (int k = 0; k < RECORDS_TO_DISPLAY; k++) {
+			currentIsHigh = !currentIsHigh;
+			currentTimestamp = swapBytes(tideDataStream.readInt());
+			currentHeight = (float) (tideDataStream.readByte()) / 10.0f;
+			
+			dayLabel = TideFormatter.formatDay(currentTimestamp);
+			if (!dayLabel.equals(lastDay)) {
+				lastDay = dayLabel;
+				monthLabel = TideFormatter.formatMonth(currentTimestamp);
+				if (!monthLabel.equals(lastMonth)) {
+					outputString.append("\n ==== " + dayLabel + " " + monthLabel + " ====\n");
+					lastMonth = monthLabel;
+				} else {
+					outputString.append(dayLabel + "\n");
+				}
+			}
+			outputString.append(TideFormatter.formatTideRecord(currentHeight, currentIsHigh, currentTimestamp));
+		}
+	}
 }
