@@ -21,19 +21,11 @@ public class TideFormatter {
     public static String formatHeight(float height) {
         return HEIGHT_FORMAT.format(height);
     }
-    
-    public static String formatCurrentHeight(double height) {
-        return CURRENT_HEIGHT_FORMAT.format(height);
-    }
-    
+
     public static String formatTime(int timeValue) {
         return TIME_FORMAT.format(timeValue);
     }
-    
-    public static String formatRiseRate(double riseRate) {
-        return RISE_RATE_FORMAT.format(Math.abs(riseRate * 100));
-    }
-    
+
     public static String formatFullDate(long timestamp) {
         return FULL_DATE_FORMAT.format(new Date(1000 * timestamp));
     }
@@ -49,21 +41,14 @@ public class TideFormatter {
     public static String formatMonth(long timestamp) {
         return MONTH_FORMAT.format(new Date(1000 * timestamp));
     }
-    
-    /**
-     * Format a tide record for display
-     */
-    public static String formatTideRecord(float height, boolean isHighTide, long timestamp) {
-        return " " + formatHourMinute(timestamp) + (isHighTide ? " H " : " L ") + formatHeight(height) + "m\n";
-    }
-    
+
     /**
      * Format a TideData object for display
      */
     public static String formatTideRecord(TideData tideData) {
-        return " " + formatHourMinute(tideData.getTimestamp()) + 
-               (tideData.isHighTide() ? " H " : " L ") + 
-               formatHeight(tideData.getHeight()) + "m\n";
+        return " " + (tideData.isHighTide() ? " HIGH " : "  low ")
+                + formatHourMinute(tideData.getTimestamp())
+                + formatHeight(tideData.getHeight()) + "m\n";
     }
     
     /**
