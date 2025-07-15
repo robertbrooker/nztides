@@ -20,7 +20,6 @@ import androidx.core.content.ContextCompat;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -37,15 +36,6 @@ public class NZTides extends Activity {
     private String[] recentPorts = new String[0];
 
     private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
-
-    public static int swapBytes(int value) {
-        int b1 = (value) & 0xff;
-        int b2 = (value >> 8) & 0xff;
-        int b3 = (value >> 16) & 0xff;
-        int b4 = (value >> 24) & 0xff;
-
-        return b1 << 24 | b2 << 16 | b3 << 8 | b4;
-    }
 
     /**
      * Calculate current tide height and rate using cosine interpolation
@@ -91,12 +81,12 @@ public class NZTides extends Activity {
             tideDataStream.readLine();
 
             // Read timestamp for last tide in datafile
-            lastTideInFile = swapBytes(tideDataStream.readInt());
+            lastTideInFile = TideDataReader.swapBytes(tideDataStream.readInt());
 
             // Skip number of records in datafile
             tideDataStream.readInt();
 
-            previousTideTime = swapBytes(tideDataStream.readInt());
+            previousTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
             previousTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
 
             if (previousTideTime > currentTimeSeconds) {
@@ -107,7 +97,7 @@ public class NZTides extends Activity {
 
                 // Look through tide data file for current time
                 while (true) {
-                    nextTideTime = swapBytes(tideDataStream.readInt());
+                    nextTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
                     nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
                     if (nextTideTime > currentTimeSeconds) {
                         break;
@@ -127,8 +117,7 @@ public class NZTides extends Activity {
                 TideCalculation currentTideCalc = calculateCurrentTide(currentTimeSeconds, previousTide, nextTide);
 
                 // Start populating output string
-                DecimalFormat currentHeightFormat = new DecimalFormat(" 0.0;-0.0");
-                outputString.append("[").append(port).append("] ").append(currentHeightFormat.format(currentTideCalc.height)).append("m");
+                outputString.append("[").append(port).append("] ").append(TideFormatter.formatCurrentHeight(currentTideCalc.height)).append("m");
 
                 // Display up arrow or down arrow depending on whether tide is rising or falling
                 if (previousTideHeight < nextTideHeight)
@@ -136,8 +125,7 @@ public class NZTides extends Activity {
                 else
                     outputString.append(" ↓"); // down arrow
 
-                DecimalFormat riseRateFormat = new DecimalFormat("0");
-                outputString.append(riseRateFormat.format(Math.abs(currentTideCalc.riseRate * 100))).append(" cm/hr\n");
+                outputString.append(TideFormatter.formatRiseRate(Math.abs(currentTideCalc.riseRate * 100))).append(" cm/hr\n");
                 outputString.append("---------------\n");
 
                 displayTideTimings(outputString, currentTimeSeconds, previousTideTime, nextTideTime, previousTideHeight, nextTideHeight);

@@ -22,6 +22,14 @@ public class TideFormatter {
         return HEIGHT_FORMAT.format(height);
     }
 
+    public static String formatCurrentHeight(double height) {
+        return CURRENT_HEIGHT_FORMAT.format(height);
+    }
+
+    public static String formatRiseRate(double riseRate) {
+        return RISE_RATE_FORMAT.format(riseRate);
+    }
+
     public static String formatTime(int timeValue) {
         return TIME_FORMAT.format(timeValue);
     }
