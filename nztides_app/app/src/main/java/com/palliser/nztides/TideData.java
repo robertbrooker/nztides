@@ -35,7 +35,6 @@ public class TideData {
     
     @Override
     public String toString() {
-        return String.format("TideData{timestamp=%d, height=%.2f, isHighTide=%s}", 
-                timestamp, height, isHighTide);
+        return String.format("TideData{timestamp=%d, height=%.2f, isHighTide=%s}", timestamp, height, isHighTide);
     }
 }

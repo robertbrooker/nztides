@@ -2,14 +2,50 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
       package="com.palliser.nztides"
       android:versionCode="22" android:versionName="22">
+      
+    <!-- Notification permissions -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
     <application android:icon="@drawable/icon" android:label="@string/app_name">
+        
+        <!-- Main activity -->
         <activity android:name=".NZTides"
                   android:label="@string/app_name"
-            android:exported="true">
+                  android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!-- Notification settings activity -->
+        <activity android:name=".NotificationSettingsActivity"
+                  android:label="@string/menu_notification_settings"
+                  android:exported="false" />
+        
+        <!-- Tide notification service -->
+        <service android:name=".TideNotificationService"
+                 android:enabled="true"
+                 android:exported="false" />
+        
+        <!-- Broadcast receiver for scheduled updates and boot events -->
+        <receiver android:name=".TideUpdateReceiver"
+                  android:enabled="true"
+                  android:exported="false">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.palliser.nztides.UPDATE_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+        
     </application>
 </manifest>

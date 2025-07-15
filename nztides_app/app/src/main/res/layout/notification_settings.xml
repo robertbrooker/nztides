@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tide Notification Settings"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <CheckBox
+        android:id="@+id/enable_notifications"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/notifications_enabled"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/notifications_enabled_summary"
+        android:textSize="14sp"
+        android:textColor="@android:color/secondary_text_light"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/update_frequency"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <RadioGroup
+        android:id="@+id/update_frequency_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginBottom="16dp">
+
+        <RadioButton
+            android:id="@+id/freq_5min"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/update_frequency_5min" />
+
+        <RadioButton
+            android:id="@+id/freq_10min"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/update_frequency_10min" />
+
+        <RadioButton
+            android:id="@+id/freq_15min"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/update_frequency_15min" />
+
+        <RadioButton
+            android:id="@+id/freq_30min"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/update_frequency_30min" />
+
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/status_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:layout_marginBottom="16dp"
+        android:padding="8dp"
+        android:background="@android:color/background_light" />
+
+    <Button
+        android:id="@+id/save_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Settings"
+        android:textSize="16sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Note: Notifications will show the next tide time and update automatically. Battery optimization may affect update frequency."
+        android:textSize="12sp"
+        android:textColor="@android:color/secondary_text_light"
+        android:layout_marginTop="16dp"
+        android:padding="8dp" />
+
+</LinearLayout>

@@ -39,6 +39,12 @@ public class TideGraphGenerator {
         }
     }
     
+    /**
+     * Parameters of cosine wave used to interpolate between tides
+     * We assume that the tides vary cosinusoidally
+     * between the last tide and the next one
+     * See NZ Nautical almanac for more details
+     */
     private static void markCurrentPosition(char[][] graph, int currentTimeSeconds, 
                                           int previousTideTime, int nextTideTime) {
         double omega = 2 * Math.PI / ((nextTideTime - previousTideTime) * 2);
