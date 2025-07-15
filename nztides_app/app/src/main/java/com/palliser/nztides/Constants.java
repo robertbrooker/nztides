@@ -8,7 +8,6 @@ public final class Constants {
     public static final String PREFS_NAME = "NZTidesPrefsFile";
     public static final String PREFS_RECENT_PORTS = "RecentPorts";
     public static final String PREFS_CURRENT_PORT = "CurrentPort";
-    public static final String PREF_NOTIFICATIONS_ENABLED = "NotificationsEnabled";
     public static final String PREFS_NOTIFICATIONS_ENABLED = "NotificationsEnabled";
     public static final String PREFS_UPDATE_FREQUENCY = "UpdateFrequency";
     

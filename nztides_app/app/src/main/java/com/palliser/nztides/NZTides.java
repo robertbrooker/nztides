@@ -187,7 +187,7 @@ public class NZTides extends Activity {
             
             // Start notification service if enabled
             SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
-            boolean notificationsEnabled = settings.getBoolean(Constants.PREF_NOTIFICATIONS_ENABLED, true);
+            boolean notificationsEnabled = settings.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, true);
             if (notificationsEnabled) {
                 TideUpdateReceiver.scheduleNotificationUpdates(this);
             }
