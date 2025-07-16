@@ -46,15 +46,8 @@ public class NextTideInfo {
         if (secondsUntilTide <= 0) {
             return "Now";
         }
-        
-        int hours = secondsUntilTide / 3600;
-        int minutes = (secondsUntilTide / 60) % 60;
-        
-        if (hours > 0) {
-            return String.format("In %dh %dm", hours, minutes);
-        } else {
-            return String.format("In %d minutes", minutes);
-        }
+
+        return "In " + TideFormatter.formatDuration(secondsUntilTide);        
     }
     
     /**

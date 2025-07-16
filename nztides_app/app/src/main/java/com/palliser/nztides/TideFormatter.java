@@ -65,6 +65,10 @@ public class TideFormatter {
     public static String formatDuration(int seconds) {
         int hours = seconds / 3600;
         int minutes = (seconds / 60) % 60;
-        return hours + "h" + formatTime(minutes) + "m";
+        if (hours > 0) {
+            return String.format("%dh %dm", hours, minutes);
+        } else {
+            return String.format("%d minutes", minutes);
+        }
     }
 }
