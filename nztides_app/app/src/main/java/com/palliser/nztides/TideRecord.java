@@ -1,0 +1,42 @@
+package com.palliser.nztides;
+
+/**
+ * Immutable tide record representing a single tide event
+ * Optimized for memory efficiency and fast lookups
+ */
+public final class TideRecord {
+    public final long timestamp;
+    public final float height;
+    public final boolean isHighTide;
+    
+    public TideRecord(long timestamp, float height, boolean isHighTide) {
+        this.timestamp = timestamp;
+        this.height = height;
+        this.isHighTide = isHighTide;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        
+        TideRecord that = (TideRecord) obj;
+        return timestamp == that.timestamp && 
+               Float.compare(that.height, height) == 0 && 
+               isHighTide == that.isHighTide;
+    }
+    
+    @Override
+    public int hashCode() {
+        int result = Long.hashCode(timestamp);
+        result = 31 * result + Float.hashCode(height);
+        result = 31 * result + Boolean.hashCode(isHighTide);
+        return result;
+    }
+    
+    @Override
+    public String toString() {
+        return String.format("TideRecord{timestamp=%d, height=%.2f, isHighTide=%s}", 
+                timestamp, height, isHighTide);
+    }
+}

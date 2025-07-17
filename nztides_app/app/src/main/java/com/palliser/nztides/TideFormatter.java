@@ -71,4 +71,39 @@ public class TideFormatter {
             return String.format("%d minutes", minutes);
         }
     }
+    
+    /**
+     * Format time ago in readable format
+     */
+    public static String formatTimeAgo(int seconds) {
+        int hours = seconds / 3600;
+        int minutes = (seconds / 60) % 60;
+        
+        if (hours > 0) {
+            return String.format("%dh%02dm ago", hours, minutes);
+        } else {
+            return String.format("%dm ago", minutes);
+        }
+    }
+    
+    /**
+     * Format time until in readable format  
+     */
+    public static String formatTimeUntil(int seconds) {
+        int hours = seconds / 3600;
+        int minutes = (seconds / 60) % 60;
+        
+        if (hours > 0) {
+            return String.format("%dh%02dm", hours, minutes);
+        } else {
+            return String.format("%dm", minutes);
+        }
+    }
+    
+    /**
+     * Format time for tide record display
+     */
+    public static String formatTime(long timestamp) {
+        return HOUR_MINUTE_FORMAT.format(new Date(1000 * timestamp));
+    }
 }

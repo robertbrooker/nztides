@@ -15,7 +15,7 @@ public class TideNotificationService extends Service {
     private static final String TAG = "TideNotificationService";
     
     private NotificationHelper notificationHelper;
-    private TideCalculationService tideCalculationService;
+    private CachedTideCalculationService tideCalculationService;
     private String currentPort;
     
     @Override
@@ -24,7 +24,7 @@ public class TideNotificationService extends Service {
         Log.d(TAG, "Service created");
         
         notificationHelper = new NotificationHelper(this);
-        tideCalculationService = new TideCalculationService(getAssets());
+        tideCalculationService = new CachedTideCalculationService(getAssets());
         
         // Load current port from preferences
         loadCurrentPort();

@@ -65,6 +65,98 @@ public class NZTides extends Activity {
     }
 
     public String calculateTideOutput(String port) {
+        // Try cached calculation first
+        TideRepository repository = TideRepository.getInstance();
+        if (repository.isReady()) {
+            String result = calculateTideOutputFromCache(port);
+            if (result != null) {
+                return result;
+            }
+            Log.w("NZTides", "Cache calculation failed for port: " + port + ", falling back to file");
+        }
+        
+        // Fallback to original file-based calculation
+        return calculateTideOutputFromFile(port);
+    }
+    
+    /**
+     * Calculate tide output using cached data (new optimized version)
+     */
+    private String calculateTideOutputFromCache(String port) {
+        try {
+            TideDataCache cache = TideRepository.getInstance().getCache();
+            if (cache == null || !cache.hasDataForPort(port)) {
+                return null;
+            }
+            
+            StringBuilder outputString = new StringBuilder();
+            Date currentTime = new Date();
+            long currentTimeSeconds = currentTime.getTime() / 1000;
+            
+            // Check if we have valid data for current time
+            if (!cache.isValidAt(currentTimeSeconds)) {
+                outputString.append("Tide data has expired. Please update the app for current predictions.");
+                return outputString.toString();
+            }
+            
+            TideInterval interval = cache.getTideInterval(port, currentTimeSeconds);
+            if (interval == null || !interval.isValid()) {
+                outputString.append("No tide data available for the current time at ").append(port);
+                return outputString.toString();
+            }
+            
+            // Calculate current tide using cached data
+            CachedTideCalculationService calcService = new CachedTideCalculationService(getAssets());
+            CachedTideCalculationService.TideCalculation currentTideCalc = 
+                calcService.calculateCurrentTide(port, currentTimeSeconds);
+            
+            if (currentTideCalc == null) {
+                return null; // Fall back to file-based calculation
+            }
+            
+            // Generate tide graph
+            String tideGraphStr = TideGraphGenerator.generateTideGraph(
+                interval.previous.height, interval.next.height, 
+                (int) currentTimeSeconds, (int) interval.previous.timestamp, (int) interval.next.timestamp);
+            
+            // Start populating output string
+            outputString.append("[").append(port).append("] ")
+                       .append(TideFormatter.formatCurrentHeight(currentTideCalc.height)).append("m");
+            
+            // Display up arrow or down arrow depending on whether tide is rising or falling
+            if (interval.previous.height < interval.next.height)
+                outputString.append(" ↑"); // up arrow
+            else
+                outputString.append(" ↓"); // down arrow
+            
+            outputString.append(TideFormatter.formatRiseRate(Math.abs(currentTideCalc.riseRate * 100)))
+                       .append(" cm/hr\n");
+            outputString.append("---------------\n");
+            
+            displayTideTimingsFromCache(outputString, currentTimeSeconds, interval);
+            outputString.append("\n");
+            
+            // Display ASCII tide graph
+            outputString.append(tideGraphStr);
+            
+            // Display tide records from cache
+            displayTideRecordsFromCache(outputString, cache, port, currentTimeSeconds);
+            
+            outputString.append("The last tide in this datafile occurs at:\n");
+            outputString.append(TideFormatter.formatFullDate(cache.getDataValidUntil()));
+            
+            return outputString.toString();
+            
+        } catch (Exception e) {
+            Log.e("NZTides", "Error calculating tide output from cache", e);
+            return null;
+        }
+    }
+    
+    /**
+     * Original file-based calculation (fallback)
+     */
+    private String calculateTideOutputFromFile(String port) {
         AssetManager assetManager = getAssets();
         StringBuilder outputString = new StringBuilder();
 
@@ -334,20 +426,89 @@ public class NZTides extends Activity {
     }
 
     /**
-     * Display tide records grouped by day
+     * Display tide timings using cached data
+     */
+    private void displayTideTimingsFromCache(StringBuilder outputString, long currentTimeSeconds, TideInterval interval) {
+        int timeToPrevious = (int) (currentTimeSeconds - interval.previous.timestamp);
+        int timeToNext = (int) (interval.next.timestamp - currentTimeSeconds);
+        
+        if (timeToPrevious < timeToNext) {
+            // Previous tide is closer
+            if (interval.next.isHighTide) {
+                outputString.append("Low tide (").append(TideFormatter.formatCurrentHeight(interval.previous.height))
+                           .append("m) ").append(TideFormatter.formatTimeAgo(timeToPrevious)).append("\n");
+            } else {
+                outputString.append("High tide (").append(TideFormatter.formatCurrentHeight(interval.previous.height))
+                           .append("m) ").append(TideFormatter.formatTimeAgo(timeToPrevious)).append("\n");
+            }
+        } else {
+            // Next tide is closer or equal
+            if (interval.next.isHighTide) {
+                outputString.append("High tide (").append(TideFormatter.formatCurrentHeight(interval.next.height))
+                           .append("m) in ").append(TideFormatter.formatTimeUntil(timeToNext)).append("\n");
+            } else {
+                outputString.append("Low tide (").append(TideFormatter.formatCurrentHeight(interval.next.height))
+                           .append("m) in ").append(TideFormatter.formatTimeUntil(timeToNext)).append("\n");
+            }
+        }
+    }
+    
+    /**
+     * Display tide records using cached data
+     */
+    private void displayTideRecordsFromCache(StringBuilder outputString, TideDataCache cache, String port, long currentTimeSeconds) {
+        // Get tides for next 30 days (roughly 120 tides)
+        long endTime = currentTimeSeconds + (30 * 24 * 3600);
+        TideRecord[] upcomingTides = cache.getTidesInRange(port, currentTimeSeconds, endTime);
+        
+        if (upcomingTides.length == 0) {
+            outputString.append("\nNo upcoming tide data available.\n");
+            return;
+        }
+        
+        String lastDay = "";
+        String lastMonth = "";
+        
+        // Display the upcoming tides
+        for (int i = 0; i < Math.min(upcomingTides.length, Constants.RECORDS_TO_DISPLAY); i++) {
+            TideRecord tide = upcomingTides[i];
+            
+            String dayLabel = TideFormatter.formatDay(tide.timestamp);
+            if (!dayLabel.equals(lastDay)) {
+                lastDay = dayLabel;
+                String monthLabel = TideFormatter.formatMonth(tide.timestamp);
+                if (!monthLabel.equals(lastMonth)) {
+                    outputString.append("\n---==== ").append(monthLabel).append(" ====---\n");
+                    lastMonth = monthLabel;
+                }
+                outputString.append(dayLabel).append("\n");
+            }
+            
+            // Format tide record
+            String heightStr = TideFormatter.formatCurrentHeight(tide.height);
+            String timeStr = TideFormatter.formatTime(tide.timestamp);
+            String typeStr = tide.isHighTide ? " H " : " L ";
+            String dateStr = TideFormatter.formatFullDate((int) tide.timestamp);
+            
+            outputString.append(heightStr).append(typeStr).append(timeStr).append(" ").append(dateStr).append("\n");
+        }
+    }
+
+    /**
+     * Display tide records using file-based data (original fallback method)
      */
     private void displayTideRecords(StringBuilder outputString, DataInputStream tideDataStream,
                                     int previousTideTime, float previousTideHeight,
                                     int nextTideTime, float nextTideHeight) throws IOException {
         String lastDay = "";
-
+        
         // Create first two tide records
         boolean firstIsHigh = !(nextTideHeight > previousTideHeight);
         TideData firstTide = new TideData(previousTideTime, previousTideHeight, firstIsHigh);
         TideData secondTide = new TideData(nextTideTime, nextTideHeight, !firstIsHigh);
-
+        
         String lastMonth = TideFormatter.formatMonth(firstTide.getTimestamp());
-
+        
         // First tide record
         String dayLabel = TideFormatter.formatDay(firstTide.getTimestamp());
         if (!dayLabel.equals(lastDay)) {
@@ -355,11 +516,11 @@ public class NZTides extends Activity {
             lastDay = dayLabel;
         }
         outputString.append(TideFormatter.formatTideRecord(firstTide));
-
+        
         // Second tide record
         dayLabel = TideFormatter.formatDay(secondTide.getTimestamp());
         String monthLabel;
-
+        
         if (!dayLabel.equals(lastDay)) {
             lastDay = dayLabel;
             monthLabel = TideFormatter.formatMonth(secondTide.getTimestamp());
@@ -370,13 +531,13 @@ public class NZTides extends Activity {
             outputString.append(dayLabel).append("\n");
         }
         outputString.append(TideFormatter.formatTideRecord(secondTide));
-
+        
         // Remaining tide records
         boolean currentIsHigh = secondTide.isHighTide();
         for (int k = 0; k < Constants.RECORDS_TO_DISPLAY; k++) {
             currentIsHigh = !currentIsHigh;
             TideData currentTide = TideDataReader.readFromStream(tideDataStream).withTideType(currentIsHigh);
-
+            
             dayLabel = TideFormatter.formatDay(currentTide.getTimestamp());
             if (!dayLabel.equals(lastDay)) {
                 lastDay = dayLabel;
