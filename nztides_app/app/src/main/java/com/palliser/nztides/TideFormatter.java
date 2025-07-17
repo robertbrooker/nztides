@@ -53,7 +53,7 @@ public class TideFormatter {
     /**
      * Format a TideData object for display
      */
-    public static String formatTideRecord(TideData tideData) {
+    public static String formatTideRecord(TideRecord tideData) {
         return " " + (tideData.isHighTide() ? " HIGH " : "  low ")
                 + formatHourMinute(tideData.getTimestamp())
                 + formatHeight(tideData.getHeight()) + "m\n";
@@ -62,9 +62,9 @@ public class TideFormatter {
     /**
      * Format time duration in hours and minutes
      */
-    public static String formatDuration(int seconds) {
-        int hours = seconds / 3600;
-        int minutes = (seconds / 60) % 60;
+    public static String formatDuration(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds / 60) % 60;
         if (hours > 0) {
             return String.format("%dh %dm", hours, minutes);
         } else {
@@ -75,9 +75,9 @@ public class TideFormatter {
     /**
      * Format time ago in readable format
      */
-    public static String formatTimeAgo(int seconds) {
-        int hours = seconds / 3600;
-        int minutes = (seconds / 60) % 60;
+    public static String formatTimeAgo(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds / 60) % 60;
         
         if (hours > 0) {
             return String.format("%dh%02dm ago", hours, minutes);
@@ -89,9 +89,9 @@ public class TideFormatter {
     /**
      * Format time until in readable format  
      */
-    public static String formatTimeUntil(int seconds) {
-        int hours = seconds / 3600;
-        int minutes = (seconds / 60) % 60;
+    public static String formatTimeUntil(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds / 60) % 60;
         
         if (hours > 0) {
             return String.format("%dh%02dm", hours, minutes);

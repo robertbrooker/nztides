@@ -31,6 +31,10 @@ public class NextTideInfo {
     public float getHeight() {
         return height;
     }
+    
+    public int getSecondsUntilTide() {
+        return secondsUntilTide;
+    }
 
     /**
      * Gets a formatted string for the tide type

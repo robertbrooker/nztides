@@ -40,7 +40,7 @@ public class NZTides extends Activity {
     /**
      * Calculate current tide height and rate using cosine interpolation
      */
-    private TideCalculation calculateCurrentTide(int currentTimeSeconds, TideData previousTide, TideData nextTide) {
+    private TideCalculation calculateCurrentTide(long currentTimeSeconds, TideRecord previousTide, TideRecord nextTide) {
         double omega = 2 * Math.PI / ((nextTide.getTimestamp() - previousTide.getTimestamp()) * 2);
         double amplitude = (previousTide.getHeight() - nextTide.getHeight()) / 2;
         double mean = (nextTide.getHeight() + previousTide.getHeight()) / 2;
@@ -117,7 +117,7 @@ public class NZTides extends Activity {
             // Generate tide graph
             String tideGraphStr = TideGraphGenerator.generateTideGraph(
                 interval.previous.height, interval.next.height, 
-                (int) currentTimeSeconds, (int) interval.previous.timestamp, (int) interval.next.timestamp);
+                currentTimeSeconds, interval.previous.timestamp, interval.next.timestamp);
             
             // Start populating output string
             outputString.append("[").append(port).append("] ")
@@ -133,7 +133,9 @@ public class NZTides extends Activity {
                        .append(" cm/hr\n");
             outputString.append("---------------\n");
             
-            displayTideTimingsFromCache(outputString, currentTimeSeconds, interval);
+            displayTideTimings(outputString, currentTimeSeconds, 
+                               interval.previous.timestamp, interval.next.timestamp,
+                               interval.previous.height, interval.next.height);
             outputString.append("\n");
             
             // Display ASCII tide graph
@@ -160,12 +162,12 @@ public class NZTides extends Activity {
         AssetManager assetManager = getAssets();
         StringBuilder outputString = new StringBuilder();
 
-        int nextTideTime, previousTideTime;
+        long nextTideTime, previousTideTime;
         float nextTideHeight;
         float previousTideHeight;
         Date currentTime = new Date();
-        int currentTimeSeconds = (int) (currentTime.getTime() / 1000);
-        int lastTideInFile;
+        long currentTimeSeconds = currentTime.getTime() / 1000;
+        long lastTideInFile;
 
 
         try (DataInputStream tideDataStream = new DataInputStream(assetManager.open(port + ".tdat", 1))) {
@@ -198,9 +200,9 @@ public class NZTides extends Activity {
                     previousTideHeight = nextTideHeight;
                 }
 
-                // Create TideData objects for calculation
-                TideData previousTide = new TideData(previousTideTime, previousTideHeight, false); // tide type determined later
-                TideData nextTide = new TideData(nextTideTime, nextTideHeight, false); // tide type determined later
+                // Create TideRecord objects for calculation
+                TideRecord previousTide = new TideRecord(previousTideTime, previousTideHeight, false); // tide type determined later
+                TideRecord nextTide = new TideRecord(nextTideTime, nextTideHeight, false); // tide type determined later
 
                 String tideGraphStr = TideGraphGenerator.generateTideGraph(
                     previousTideHeight, nextTideHeight, 
@@ -403,11 +405,11 @@ public class NZTides extends Activity {
     /**
      * Display timing information for tides
      */
-    private void displayTideTimings(StringBuilder outputString, int currentTimeSeconds,
-                                    int previousTideTime, int nextTideTime,
+    private void displayTideTimings(StringBuilder outputString, long currentTimeSeconds,
+                                    long previousTideTime, long nextTideTime,
                                     float previousTideHeight, float nextTideHeight) {
-        int timeToPrevious = (currentTimeSeconds - previousTideTime);
-        int timeToNext = (nextTideTime - currentTimeSeconds);
+        long timeToPrevious = (currentTimeSeconds - previousTideTime);
+        long timeToNext = (nextTideTime - currentTimeSeconds);
         boolean isHighTideNext = (nextTideHeight > previousTideHeight);
 
         if (timeToPrevious < timeToNext) {
@@ -429,8 +431,8 @@ public class NZTides extends Activity {
      * Display tide timings using cached data
      */
     private void displayTideTimingsFromCache(StringBuilder outputString, long currentTimeSeconds, TideInterval interval) {
-        int timeToPrevious = (int) (currentTimeSeconds - interval.previous.timestamp);
-        int timeToNext = (int) (interval.next.timestamp - currentTimeSeconds);
+        long timeToPrevious = currentTimeSeconds - interval.previous.timestamp;
+        long timeToNext = interval.next.timestamp - currentTimeSeconds;
         
         if (timeToPrevious < timeToNext) {
             // Previous tide is closer
@@ -467,7 +469,7 @@ public class NZTides extends Activity {
         }
         
         String lastDay = "";
-        String lastMonth = "";
+        String lastMonth = TideFormatter.formatMonth(upcomingTides[0].timestamp);   // forces it to not display until the next month
         
         // Display the upcoming tides
         for (int i = 0; i < Math.min(upcomingTides.length, Constants.RECORDS_TO_DISPLAY); i++) {
@@ -484,13 +486,9 @@ public class NZTides extends Activity {
                 outputString.append(dayLabel).append("\n");
             }
             
-            // Format tide record
-            String heightStr = TideFormatter.formatCurrentHeight(tide.height);
-            String timeStr = TideFormatter.formatTime(tide.timestamp);
-            String typeStr = tide.isHighTide ? " H " : " L ";
-            String dateStr = TideFormatter.formatFullDate((int) tide.timestamp);
-            
-            outputString.append(heightStr).append(typeStr).append(timeStr).append(" ").append(dateStr).append("\n");
+            // Format tide record using the same format as displayTideRecords
+            TideRecord tideData = new TideRecord(tide.timestamp, tide.height, tide.isHighTide);
+            outputString.append(TideFormatter.formatTideRecord(tideData));
         }
     }
 
@@ -498,14 +496,14 @@ public class NZTides extends Activity {
      * Display tide records using file-based data (original fallback method)
      */
     private void displayTideRecords(StringBuilder outputString, DataInputStream tideDataStream,
-                                    int previousTideTime, float previousTideHeight,
-                                    int nextTideTime, float nextTideHeight) throws IOException {
+                                    long previousTideTime, float previousTideHeight,
+                                    long nextTideTime, float nextTideHeight) throws IOException {
         String lastDay = "";
         
         // Create first two tide records
         boolean firstIsHigh = !(nextTideHeight > previousTideHeight);
-        TideData firstTide = new TideData(previousTideTime, previousTideHeight, firstIsHigh);
-        TideData secondTide = new TideData(nextTideTime, nextTideHeight, !firstIsHigh);
+        TideRecord firstTide = new TideRecord(previousTideTime, previousTideHeight, firstIsHigh);
+        TideRecord secondTide = new TideRecord(nextTideTime, nextTideHeight, !firstIsHigh);
         
         String lastMonth = TideFormatter.formatMonth(firstTide.getTimestamp());
         
@@ -533,10 +531,10 @@ public class NZTides extends Activity {
         outputString.append(TideFormatter.formatTideRecord(secondTide));
         
         // Remaining tide records
-        boolean currentIsHigh = secondTide.isHighTide();
+        boolean currentIsHigh = secondTide.isHighTide;
         for (int k = 0; k < Constants.RECORDS_TO_DISPLAY; k++) {
             currentIsHigh = !currentIsHigh;
-            TideData currentTide = TideDataReader.readFromStream(tideDataStream).withTideType(currentIsHigh);
+            TideRecord currentTide = TideDataReader.readFromStream(tideDataStream).withTideType(currentIsHigh);
             
             dayLabel = TideFormatter.formatDay(currentTide.getTimestamp());
             if (!dayLabel.equals(lastDay)) {

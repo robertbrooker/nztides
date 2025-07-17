@@ -27,3 +27,6 @@ This helps represent the current height and time from the last or the time to ne
 - Prefer **pattern matching** over traditional `if` or `switch` statements.
 - Avoid static state or global variables.
 
+## Process
+- Use New Zealand English where possible for all code, comments, documentation and responses.
+- My terminal is PowerShell (pwsh) with `posh-git` module installed, so use PowerShell commands where applicable.

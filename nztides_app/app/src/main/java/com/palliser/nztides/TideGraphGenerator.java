@@ -11,8 +11,8 @@ public class TideGraphGenerator {
      * Generate ASCII art tide graph
      */
     public static String generateTideGraph(float previousHeight, float nextHeight, 
-                                         int currentTimeSeconds, int previousTideTime, 
-                                         int nextTideTime) {
+                                         long currentTimeSeconds, long previousTideTime, 
+                                         long nextTideTime) {
         char[][] graph = new char[GRAPH_ROWS][GRAPH_COLS + 1];
         initialiseGraph(graph);
         createTideGraph(graph, previousHeight, nextHeight);
@@ -45,8 +45,8 @@ public class TideGraphGenerator {
      * between the last tide and the next one
      * See NZ Nautical almanac for more details
      */
-    private static void markCurrentPosition(char[][] graph, int currentTimeSeconds, 
-                                          int previousTideTime, int nextTideTime) {
+    private static void markCurrentPosition(char[][] graph, long currentTimeSeconds, 
+                                          long previousTideTime, long nextTideTime) {
         double omega = 2 * Math.PI / ((nextTideTime - previousTideTime) * 2);
         double phase = omega * (currentTimeSeconds - previousTideTime);
         double x = (phase + Math.PI / 2) / (2.0 * Math.PI);
