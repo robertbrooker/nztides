@@ -3,6 +3,7 @@ package com.palliser.nztides;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 
 /**
  * Utility class for formatting tide-related text and timestamps
@@ -13,10 +14,10 @@ public class TideFormatter {
     private static final DecimalFormat TIME_FORMAT = new DecimalFormat("00");
     private static final DecimalFormat RISE_RATE_FORMAT = new DecimalFormat("0");
     
-    private static final SimpleDateFormat FULL_DATE_FORMAT = new SimpleDateFormat("HH:mm E dd/MM/yy zzz");
-    private static final SimpleDateFormat HOUR_MINUTE_FORMAT = new SimpleDateFormat("HH:mm");
-    private static final SimpleDateFormat DAY_FORMAT = new SimpleDateFormat("E dd");
-    private static final SimpleDateFormat MONTH_FORMAT = new SimpleDateFormat("MMM yyyy");
+    private static final SimpleDateFormat FULL_DATE_FORMAT = new SimpleDateFormat("HH:mm E dd/MM/yy zzz", Locale.ENGLISH);
+    private static final SimpleDateFormat HOUR_MINUTE_FORMAT = new SimpleDateFormat("HH:mm", Locale.ENGLISH);
+    private static final SimpleDateFormat DAY_FORMAT = new SimpleDateFormat("E dd", Locale.ENGLISH);
+    private static final SimpleDateFormat MONTH_FORMAT = new SimpleDateFormat("MMM yyyy", Locale.ENGLISH);
     
     public static String formatHeight(float height) {
         return HEIGHT_FORMAT.format(height);
@@ -28,10 +29,6 @@ public class TideFormatter {
 
     public static String formatRiseRate(double riseRate) {
         return RISE_RATE_FORMAT.format(riseRate);
-    }
-
-    public static String formatTime(int timeValue) {
-        return TIME_FORMAT.format(timeValue);
     }
 
     public static String formatFullDate(long timestamp) {

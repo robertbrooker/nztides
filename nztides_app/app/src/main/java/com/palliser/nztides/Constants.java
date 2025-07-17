@@ -24,12 +24,7 @@ public final class Constants {
     public static final String DEFAULT_PORT = "Auckland";
     public static final int RECENT_PORTS_COUNT = 3;
     public static final int RECORDS_TO_DISPLAY = 35 * 4; // About 35 days of tides
-    
-    // Error Messages
-    public static final String ERROR_READING_TIDE_DATA = "error_reading_tide_data";
-    public static final String ERROR_FUTURE_TIDE_DATA = "error_future_tide_data";
-    public static final String ERROR_NOTIFICATION_PERMISSION = "error_notification_permission";
-    
+
     private Constants() {
         // Prevent instantiation
     }

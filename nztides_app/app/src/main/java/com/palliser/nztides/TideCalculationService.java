@@ -78,8 +78,7 @@ public class TideCalculationService {
                 if (nextTideTime > currentTimeSeconds) {
                     break;
                 }
-                
-                previousTideTime = nextTideTime;
+
                 previousTideHeight = nextTideHeight;
             }
             

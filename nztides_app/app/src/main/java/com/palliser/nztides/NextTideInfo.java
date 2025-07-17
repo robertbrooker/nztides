@@ -19,11 +19,7 @@ public class NextTideInfo {
     public boolean isHighTide() {
         return isHighTide;
     }
-    
-    public boolean isHigh() {
-        return isHighTide;
-    }
-    
+
     public long getTimestamp() {
         return timestamp;
     }
@@ -53,14 +49,7 @@ public class NextTideInfo {
 
         return "In " + TideFormatter.formatDuration(secondsUntilTide);        
     }
-    
-    /**
-     * Gets a formatted time string for the tide event
-     */
-    public String getTimeString() {
-        return TideFormatter.formatHourMinute(timestamp);
-    }
-    
+
     @Override
     public String toString() {
         return String.format("NextTideInfo{%s at %s, height=%.2fm, in %ds}", 

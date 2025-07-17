@@ -428,34 +428,6 @@ public class NZTides extends Activity {
     }
 
     /**
-     * Display tide timings using cached data
-     */
-    private void displayTideTimingsFromCache(StringBuilder outputString, long currentTimeSeconds, TideInterval interval) {
-        long timeToPrevious = currentTimeSeconds - interval.previous.timestamp;
-        long timeToNext = interval.next.timestamp - currentTimeSeconds;
-        
-        if (timeToPrevious < timeToNext) {
-            // Previous tide is closer
-            if (interval.next.isHighTide) {
-                outputString.append("Low tide (").append(TideFormatter.formatCurrentHeight(interval.previous.height))
-                           .append("m) ").append(TideFormatter.formatTimeAgo(timeToPrevious)).append("\n");
-            } else {
-                outputString.append("High tide (").append(TideFormatter.formatCurrentHeight(interval.previous.height))
-                           .append("m) ").append(TideFormatter.formatTimeAgo(timeToPrevious)).append("\n");
-            }
-        } else {
-            // Next tide is closer or equal
-            if (interval.next.isHighTide) {
-                outputString.append("High tide (").append(TideFormatter.formatCurrentHeight(interval.next.height))
-                           .append("m) in ").append(TideFormatter.formatTimeUntil(timeToNext)).append("\n");
-            } else {
-                outputString.append("Low tide (").append(TideFormatter.formatCurrentHeight(interval.next.height))
-                           .append("m) in ").append(TideFormatter.formatTimeUntil(timeToNext)).append("\n");
-            }
-        }
-    }
-    
-    /**
      * Display tide records using cached data
      */
     private void displayTideRecordsFromCache(StringBuilder outputString, TideDataCache cache, String port, long currentTimeSeconds) {

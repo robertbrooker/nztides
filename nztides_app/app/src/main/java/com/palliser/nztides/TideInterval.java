@@ -19,16 +19,7 @@ public final class TideInterval {
     public boolean isValid() {
         return previous != null && next != null;
     }
-    
-    /**
-     * Checks if the given timestamp falls within this interval
-     */
-    public boolean contains(long timestamp) {
-        return isValid() && 
-               timestamp >= previous.timestamp && 
-               timestamp <= next.timestamp;
-    }
-    
+
     /**
      * Returns the duration of this interval in seconds
      */

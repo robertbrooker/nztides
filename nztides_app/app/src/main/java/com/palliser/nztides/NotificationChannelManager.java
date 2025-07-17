@@ -56,25 +56,7 @@ public class NotificationChannelManager {
         // For older versions, check if notifications are enabled
         return !NotificationManagerCompat.from(context).areNotificationsEnabled();
     }
-    
-    /**
-     * Checks if notifications are enabled for this app
-     */
-    public boolean areNotificationsEnabled() {
-        return NotificationManagerCompat.from(context).areNotificationsEnabled();
-    }
-    
-    /**
-     * Checks if the specific tide notification channel is enabled
-     */
-    public boolean isTideChannelEnabled() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = notificationManager.getNotificationChannel(Constants.NOTIFICATION_CHANNEL_ID);
-            return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
-        }
-        return areNotificationsEnabled();
-    }
-    
+
     /**
      * Gets the notification manager instance
      */

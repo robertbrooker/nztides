@@ -130,7 +130,7 @@ public class CachedTideCalculationService {
             // If first tide is in the future, return it
             if (previousTideTime > currentTimeSeconds) {
                 // Read the next tide to determine tide type
-                int nextTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
+                tideDataStream.readInt();
                 float nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
                 
                 boolean isHighTide = previousTideHeight > nextTideHeight;
@@ -150,8 +150,7 @@ public class CachedTideCalculationService {
                 if (nextTideTime > currentTimeSeconds) {
                     break;
                 }
-                
-                previousTideTime = nextTideTime;
+
                 previousTideHeight = nextTideHeight;
             }
             
