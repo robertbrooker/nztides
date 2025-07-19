@@ -11,3 +11,5 @@ nztides_app/app/build
 #.idea/workspace.xml - remove # and delete .idea if it better suit your needs.
 .gradle
 build/
+/nztides_app/.idea/
+/nztides_app/nztides_app.iml
