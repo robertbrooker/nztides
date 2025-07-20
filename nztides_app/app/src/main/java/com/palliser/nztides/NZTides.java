@@ -37,56 +37,61 @@ public class NZTides extends Activity {
 
     private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 
-    /**
-     * Calculate current tide height and rate using cosine interpolation
-     */
-    private TideCalculation calculateCurrentTide(long currentTimeSeconds, TideRecord previousTide, TideRecord nextTide) {
-        double omega = 2 * Math.PI / ((nextTide.getTimestamp() - previousTide.getTimestamp()) * 2);
-        double amplitude = (previousTide.getHeight() - nextTide.getHeight()) / 2;
-        double mean = (nextTide.getHeight() + previousTide.getHeight()) / 2;
-
-        double currentHeight = amplitude * Math.cos(omega * (currentTimeSeconds - previousTide.getTimestamp())) + mean;
-        double riseRate = -amplitude * omega * Math.sin(omega * (currentTimeSeconds - previousTide.getTimestamp())) * 3600; // cm/hr
-
-        return new TideCalculation(currentHeight, riseRate);
-    }
-
-    /**
-     * Inner class to hold tide calculation results
-     */
-    private static class TideCalculation {
-        final double height;
-        final double riseRate;
-
-        TideCalculation(double height, double riseRate) {
-            this.height = height;
-            this.riseRate = riseRate;
-        }
-    }
-
     public String calculateTideOutput(String port) {
-        // Try cached calculation first
+        // Use lazy loading for the specific port
         TideRepository repository = TideRepository.getInstance();
-        if (repository.isReady()) {
-            String result = calculateTideOutputFromCache(port);
-            if (result != null) {
-                return result;
-            }
-            Log.w("NZTides", "Cache calculation failed for port: " + port + ", falling back to file");
+        
+        // Check if port is already loaded
+        if (repository.isPortReady(port)) {
+            return calculateTideOutputFromCache(port);
         }
         
-        // Fallback to original file-based calculation
-        return calculateTideOutputFromFile(port);
+        // Port not loaded yet - load it in background and show loading message
+        // Start background loading
+        new Thread(() -> {
+            try {
+                // Load the port data directly and cache it manually
+                TideDataCache cache = TideDataLoader.loadSinglePortAsCache(getAssets(), port);
+                if (cache != null) {
+                    // Manually add to repository cache
+                    repository.addPortCache(port, cache);
+                    
+                    Log.i("NZTides", "Port " + port + " loaded successfully");
+                    
+                    // Refresh UI on main thread
+                    runOnUiThread(() -> {
+                        TextView tideTextView = findViewById(R.id.tide_text_view);
+                        if (tideTextView != null) {
+                            String result = calculateTideOutput(port); // Recursive call after loading
+                            tideTextView.setText(result);
+                        }
+                    });
+                } else {
+                    Log.e("NZTides", "Failed to load cache for port " + port);
+                }
+            } catch (Exception e) {
+                Log.e("NZTides", "Error loading tide data for port: " + port, e);
+                runOnUiThread(() -> {
+                    TextView tideTextView = findViewById(R.id.tide_text_view);
+                    if (tideTextView != null) {
+                        tideTextView.setText("Error loading tide data for " + port + ". Please try again.");
+                    }
+                });
+            }
+        }).start();
+        
+        return "Loading tide data for " + port + "...\n\nPlease wait a moment for the data to load.";
     }
     
     /**
-     * Calculate tide output using cached data (new optimized version)
+     * Calculate tide output using cached data
      */
     private String calculateTideOutputFromCache(String port) {
         try {
-            TideDataCache cache = TideRepository.getInstance().getCache();
-            if (cache == null || !cache.hasDataForPort(port)) {
-                return null;
+            TideRepository repository = TideRepository.getInstance();
+            TideDataCache cache = repository.getCache(port);
+            if (cache == null) {
+                return "No tide data available for " + port;
             }
             
             StringBuilder outputString = new StringBuilder();
@@ -111,7 +116,7 @@ public class NZTides extends Activity {
                 calcService.calculateCurrentTide(port, currentTimeSeconds);
             
             if (currentTideCalc == null) {
-                return null; // Fall back to file-based calculation
+                return "Unable to calculate current tide for " + port;
             }
             
             // Generate tide graph
@@ -151,93 +156,10 @@ public class NZTides extends Activity {
             
         } catch (Exception e) {
             Log.e("NZTides", "Error calculating tide output from cache", e);
-            return null;
+            return "Error calculating tide data for " + port + ". Please try again.";
         }
     }
     
-    /**
-     * Original file-based calculation (fallback)
-     */
-    private String calculateTideOutputFromFile(String port) {
-        AssetManager assetManager = getAssets();
-        StringBuilder outputString = new StringBuilder();
-
-        long nextTideTime, previousTideTime;
-        float nextTideHeight;
-        float previousTideHeight;
-        Date currentTime = new Date();
-        long currentTimeSeconds = currentTime.getTime() / 1000;
-        long lastTideInFile;
-
-
-        try (DataInputStream tideDataStream = new DataInputStream(assetManager.open(port + ".tdat", 1))) {
-            // Read station name (currently not used due to encoding issues)
-            tideDataStream.readLine();
-
-            // Read timestamp for last tide in datafile
-            lastTideInFile = TideDataReader.swapBytes(tideDataStream.readInt());
-
-            // Skip number of records in datafile
-            tideDataStream.readInt();
-
-            previousTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
-            previousTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
-
-            if (previousTideTime > currentTimeSeconds) {
-                outputString.append("The first tide in this datafile doesn't occur until ");
-                outputString.append(TideFormatter.formatFullDate(previousTideTime));
-                outputString.append(". The app should start working properly about then.");
-            } else {
-
-                // Look through tide data file for current time
-                while (true) {
-                    nextTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
-                    nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
-                    if (nextTideTime > currentTimeSeconds) {
-                        break;
-                    }
-                    previousTideTime = nextTideTime;
-                    previousTideHeight = nextTideHeight;
-                }
-
-                // Create TideRecord objects for calculation
-                TideRecord previousTide = new TideRecord(previousTideTime, previousTideHeight, false); // tide type determined later
-                TideRecord nextTide = new TideRecord(nextTideTime, nextTideHeight, false); // tide type determined later
-
-                String tideGraphStr = TideGraphGenerator.generateTideGraph(
-                    previousTideHeight, nextTideHeight, 
-                    currentTimeSeconds, previousTideTime, nextTideTime);
-
-                TideCalculation currentTideCalc = calculateCurrentTide(currentTimeSeconds, previousTide, nextTide);
-
-                // Start populating output string
-                outputString.append("[").append(port).append("] ").append(TideFormatter.formatCurrentHeight(currentTideCalc.height)).append("m");
-
-                // Display up arrow or down arrow depending on whether tide is rising or falling
-                if (previousTideHeight < nextTideHeight)
-                    outputString.append(" ↑"); // up arrow
-                else
-                    outputString.append(" ↓"); // down arrow
-
-                outputString.append(TideFormatter.formatRiseRate(Math.abs(currentTideCalc.riseRate * 100))).append(" cm/hr\n");
-                outputString.append("---------------\n");
-
-                displayTideTimings(outputString, currentTimeSeconds, previousTideTime, nextTideTime, previousTideHeight, nextTideHeight);
-                outputString.append("\n");
-
-                // Display ASCII tide graph
-                outputString.append(tideGraphStr);            // Display tide records grouped by day
-                displayTideRecords(outputString, tideDataStream, previousTideTime, previousTideHeight, nextTideTime, nextTideHeight);
-                outputString.append("The last tide in this datafile occurs at:\n");
-                outputString.append(TideFormatter.formatFullDate(lastTideInFile));
-            }
-
-        } catch (IOException e) {
-            outputString.append("Problem reading tide data\n\nTry selecting the port again, sometimes the ports available change with an upgrade. If this doesn't work it is either because the tide data is out of date or you've found some bug, try looking for an update.");
-        }
-        return outputString.toString();
-    }
-
     /**
      * Called when the activity is first created.
      */
@@ -464,64 +386,6 @@ public class NZTides extends Activity {
         }
     }
 
-    /**
-     * Display tide records using file-based data (original fallback method)
-     */
-    private void displayTideRecords(StringBuilder outputString, DataInputStream tideDataStream,
-                                    long previousTideTime, float previousTideHeight,
-                                    long nextTideTime, float nextTideHeight) throws IOException {
-        String lastDay = "";
-        
-        // Create first two tide records
-        boolean firstIsHigh = !(nextTideHeight > previousTideHeight);
-        TideRecord firstTide = new TideRecord(previousTideTime, previousTideHeight, firstIsHigh);
-        TideRecord secondTide = new TideRecord(nextTideTime, nextTideHeight, !firstIsHigh);
-        
-        String lastMonth = TideFormatter.formatMonth(firstTide.getTimestamp());
-        
-        // First tide record
-        String dayLabel = TideFormatter.formatDay(firstTide.getTimestamp());
-        if (!dayLabel.equals(lastDay)) {
-            outputString.append(dayLabel).append("\n");
-            lastDay = dayLabel;
-        }
-        outputString.append(TideFormatter.formatTideRecord(firstTide));
-        
-        // Second tide record
-        dayLabel = TideFormatter.formatDay(secondTide.getTimestamp());
-        String monthLabel;
-        
-        if (!dayLabel.equals(lastDay)) {
-            lastDay = dayLabel;
-            monthLabel = TideFormatter.formatMonth(secondTide.getTimestamp());
-            if (!monthLabel.equals(lastMonth)) {
-                outputString.append("\n---==== ").append(monthLabel).append(" ====---\n");
-                lastMonth = monthLabel;
-            }
-            outputString.append(dayLabel).append("\n");
-        }
-        outputString.append(TideFormatter.formatTideRecord(secondTide));
-        
-        // Remaining tide records
-        boolean currentIsHigh = secondTide.isHighTide;
-        for (int k = 0; k < Constants.RECORDS_TO_DISPLAY; k++) {
-            currentIsHigh = !currentIsHigh;
-            TideRecord currentTide = TideDataReader.readFromStream(tideDataStream).withTideType(currentIsHigh);
-            
-            dayLabel = TideFormatter.formatDay(currentTide.getTimestamp());
-            if (!dayLabel.equals(lastDay)) {
-                lastDay = dayLabel;
-                monthLabel = TideFormatter.formatMonth(currentTide.getTimestamp());
-                if (!monthLabel.equals(lastMonth)) {
-                    outputString.append("\n---==== ").append(monthLabel).append(" ====---\n");
-                    lastMonth = monthLabel;
-                }
-                outputString.append(dayLabel).append("\n");
-            }
-            outputString.append(TideFormatter.formatTideRecord(currentTide));
-        }
-    }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -531,6 +395,7 @@ public class NZTides extends Activity {
                 Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
                 initializeNotificationSystem();
             } else {
+
                 Toast.makeText(this, "Notification permission denied. You can enable it in settings.", 
                     Toast.LENGTH_LONG).show();
             }

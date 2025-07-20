@@ -14,35 +14,21 @@ public class NZTidesApplication extends Application {
     public void onCreate() {
         super.onCreate();
         
-        Log.i(TAG, "NZ Tides application starting");
+        Log.i(TAG, "NZ Tides application starting - using lazy loading for tide data");
         
-        // Initialize tide data cache asynchronously
-        TideRepository.getInstance()
-            .initializeAsync(getAssets())
-            .thenAccept(success -> {
-                if (success) {
-                    Log.i(TAG, "Tide data initialization completed successfully");
-                    onTideDataReady();
-                    
-                    // Run tests to verify cache functionality
-                    TideDataCacheTest.runTests(this)
-                        .thenAccept(testSuccess -> {
-                            if (testSuccess) {
-                                Log.i(TAG, "All cache tests passed!");
-                            } else {
-                                Log.w(TAG, "Some cache tests failed - check logs");
-                            }
-                        });
-                } else {
-                    Log.e(TAG, "Tide data initialization failed");
-                    onTideDataFailed();
-                }
-            })
-            .exceptionally(throwable -> {
-                Log.e(TAG, "Tide data initialization error", throwable);
-                onTideDataFailed();
-                return null;
-            });
+        // With lazy loading, we no longer need to initialize all tide data at startup
+        // Data will be loaded on-demand when a port is first accessed
+        onTideDataReady();
+        
+        // Run tests to verify lazy loading functionality in background thread
+        new Thread(() -> {
+            Boolean testSuccess = TideDataCacheTest.runTests(this);
+            if (testSuccess != null && testSuccess) {
+                Log.i(TAG, "All cache tests passed!");
+            } else {
+                Log.w(TAG, "Some cache tests failed - check logs");
+            }
+        }).start();
     }
     
     /**
@@ -51,14 +37,6 @@ public class NZTidesApplication extends Application {
     private void onTideDataReady() {
         Log.d(TAG, "Tide data ready - can now enable full functionality");
         // Here we could enable notifications, widgets, etc.
-    }
-    
-    /**
-     * Called when tide data loading fails
-     */
-    private void onTideDataFailed() {
-        Log.w(TAG, "Tide data failed to load - app will use fallback file-based loading");
-        // App will fall back to reading files directly when needed
     }
     
     @Override

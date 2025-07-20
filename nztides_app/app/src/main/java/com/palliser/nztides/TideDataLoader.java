@@ -138,4 +138,22 @@ public class TideDataLoader {
         String filename = portName + ".tdat";
         return loadPortData(assetManager, filename);
     }
+    
+    /**
+     * Loads tide data for a single port and returns as TideDataCache
+     * @param assetManager AssetManager to read from
+     * @param portName Name of the port (without .tdat extension)
+     * @return TideDataCache containing only this port's data, or null if loading fails
+     */
+    public static TideDataCache loadSinglePortAsCache(AssetManager assetManager, String portName) {
+        List<TideRecord> portTides = loadSinglePort(assetManager, portName);
+        if (portTides == null || portTides.isEmpty()) {
+            return null;
+        }
+        
+        Map<String, List<TideRecord>> portData = new HashMap<>();
+        portData.put(portName, portTides);
+        
+        return new TideDataCache(portData);
+    }
 }

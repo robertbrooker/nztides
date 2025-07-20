@@ -15,71 +15,68 @@ public class TideDataCacheTest {
     private static final String TAG = "TideDataCacheTest";
     
     /**
-     * Run basic tests on the tide data cache
+     * Run basic tests on the tide data cache with lazy loading
      * @param context Application context
-     * @return CompletableFuture that completes when tests are done
+     * @return Boolean indicating success
      */
-    public static CompletableFuture<Boolean> runTests(Context context) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                AssetManager assetManager = context.getAssets();
+    public static Boolean runTests(Context context) {
+        try {
+            AssetManager assetManager = context.getAssets();
+            
+            Log.i(TAG, "Starting lazy loading tide data cache tests...");
+            
+            // Test 1: Load a single port (Auckland) to test lazy loading
+            TideRepository repository = TideRepository.getInstance();
+            String testPort = "Auckland";
+            
+            // Load directly without using CompletableFuture
+            TideDataCache cache = TideDataLoader.loadSinglePortAsCache(assetManager, testPort);
+            if (cache == null) {
+                Log.e(TAG, "Test FAILED: Could not load tide data for " + testPort);
+                return false;
+            }
+            
+            // Manually add to repository
+            repository.addPortCache(testPort, cache);
+            
+            Log.i(TAG, "Test PASSED: Tide data loaded successfully for " + testPort);
                 
-                Log.i(TAG, "Starting tide data cache tests...");
-                
-                // Test 1: Load data into cache
-                TideRepository repository = TideRepository.getInstance();
-                boolean loadSuccess = repository.initializeAsync(assetManager)
-                    .get(30, TimeUnit.SECONDS); // Wait up to 30 seconds
-                
-                if (!loadSuccess) {
-                    Log.e(TAG, "Test FAILED: Could not load tide data into cache");
+                // Test 2: Verify port is ready
+                if (!repository.isPortReady(testPort)) {
+                    Log.e(TAG, "Test FAILED: Port " + testPort + " not ready after successful load");
                     return false;
                 }
                 
-                Log.i(TAG, "Test PASSED: Tide data loaded successfully");
-                
-                // Test 2: Verify cache is ready
-                if (!repository.isReady()) {
-                    Log.e(TAG, "Test FAILED: Repository not ready after successful load");
+                TideDataCache portCache = repository.getCache(testPort);
+                if (portCache == null) {
+                    Log.e(TAG, "Test FAILED: Cache is null for " + testPort + " after successful load");
                     return false;
                 }
                 
-                TideDataCache cache = repository.getCache();
-                if (cache == null) {
-                    Log.e(TAG, "Test FAILED: Cache is null after successful load");
-                    return false;
-                }
-                
-                Log.i(TAG, "Test PASSED: Cache is ready and accessible");
+                Log.i(TAG, "Test PASSED: Cache is ready and accessible for " + testPort);
                 
                 // Test 3: Check cache has data
-                int totalRecords = cache.getTotalRecordCount();
-                int portCount = cache.getAvailablePorts().size();
-                long memoryUsage = cache.getEstimatedMemoryUsage();
+                int totalRecords = portCache.getTotalRecordCount();
+                int portCount = portCache.getAvailablePorts().size();
+                long memoryUsage = portCache.getEstimatedMemoryUsage();
                 
                 if (totalRecords == 0) {
-                    Log.e(TAG, "Test FAILED: No tide records in cache");
+                    Log.e(TAG, "Test FAILED: No tide records in cache for " + testPort);
                     return false;
                 }
                 
-                if (portCount == 0) {
-                    Log.e(TAG, "Test FAILED: No ports available in cache");
+                if (portCount != 1) {
+                    Log.e(TAG, "Test FAILED: Expected 1 port but found " + portCount + " ports in cache");
                     return false;
                 }
                 
                 Log.i(TAG, "Test PASSED: Cache contains " + totalRecords + 
-                      " records for " + portCount + " ports, using ~" + 
+                      " records for " + portCount + " port (" + testPort + "), using ~" + 
                       (memoryUsage / 1024) + "KB memory");
                 
-                // Test 4: Test tide calculation with common port
-                String testPort = "Auckland";
-                if (!cache.hasDataForPort(testPort)) {
-                    // Try first available port
-                    testPort = cache.getAvailablePorts().iterator().next();
-                }
-                
+                // Test 4: Test tide calculation with loaded port
                 long currentTime = System.currentTimeMillis() / 1000;
-                TideInterval interval = cache.getTideInterval(testPort, currentTime);
+                TideInterval interval = portCache.getTideInterval(testPort, currentTime);
                 
                 if (interval == null) {
                     Log.w(TAG, "Test WARNING: No tide interval found for " + testPort + 
@@ -103,16 +100,29 @@ public class TideDataCacheTest {
                 }
                 
                 // Test 5: Performance comparison
-                testPerformance(assetManager, testPort, cache);
+                testPerformance(assetManager, testPort, portCache);
                 
-                Log.i(TAG, "All tide data cache tests completed successfully!");
+                // Test 6: Test loading a second port to verify lazy loading
+                String secondPort = "Wellington";
+                if (!repository.isPortReady(secondPort)) {
+                    // Load directly without CompletableFuture
+                    TideDataCache secondCache = TideDataLoader.loadSinglePortAsCache(assetManager, secondPort);
+                    if (secondCache != null) {
+                        repository.addPortCache(secondPort, secondCache);
+                        Log.i(TAG, "Test PASSED: Second port (" + secondPort + ") loaded successfully");
+                        Log.i(TAG, "Repository now has " + repository.getLoadedPorts().size() + " ports loaded");
+                    } else {
+                        Log.w(TAG, "Test WARNING: Failed to load second port " + secondPort);
+                    }
+                }
+                
+                Log.i(TAG, "All lazy loading tide data cache tests completed successfully!");
                 return true;
                 
             } catch (Exception e) {
                 Log.e(TAG, "Test FAILED: Exception during testing", e);
                 return false;
             }
-        });
     }
     
     /**

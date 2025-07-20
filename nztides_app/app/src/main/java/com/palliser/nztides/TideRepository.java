@@ -1,36 +1,28 @@
 package com.palliser.nztides;
 
-import android.content.res.AssetManager;
 import android.util.Log;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Repository pattern for tide data management
- * Handles loading, caching, and access to tide data
- * Thread-safe singleton implementation
+ * Handles lazy loading, caching, and access to tide data
+ * Thread-safe singleton implementation with on-demand port loading
  */
 public class TideRepository {
     private static final String TAG = "TideRepository";
     private static volatile TideRepository instance;
     
-    private volatile TideDataCache cache;
-    private volatile DataState state = DataState.UNINITIALIZED;
+    private final Map<String, TideDataCache> portCaches = new ConcurrentHashMap<>();
     private final Object stateLock = new Object();
-    private final ExecutorService executorService;
     
     public enum DataState {
-        UNINITIALIZED, LOADING, READY, ERROR, EXPIRED
+        UNINITIALIZED, LOADING, READY, ERROR
     }
     
     private TideRepository() {
-        this.executorService = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "TideDataLoader");
-            t.setDaemon(true);
-            return t;
-        });
+        // Simple constructor for lazy loading approach
     }
     
     /**
@@ -48,129 +40,64 @@ public class TideRepository {
     }
     
     /**
-     * Initializes the tide data cache asynchronously
-     * @param assetManager AssetManager to load data from
-     * @return CompletableFuture that completes when loading is done
+     * Manually adds a port cache (for simple lazy loading)
+     * @param port The port name
+     * @param cache The cache for this port
      */
-    public CompletableFuture<Boolean> initializeAsync(AssetManager assetManager) {
-        synchronized (stateLock) {
-            if (state == DataState.READY) {
-                Log.d(TAG, "Tide data already loaded");
-                return CompletableFuture.completedFuture(true);
-            }
-            
-            if (state == DataState.LOADING) {
-                Log.d(TAG, "Tide data loading already in progress");
-                // Return a future that waits for current loading to complete
-                return CompletableFuture.supplyAsync(() -> {
-                    while (state == DataState.LOADING) {
-                        try {
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return false;
-                        }
-                    }
-                    return state == DataState.READY;
-                }, executorService);
-            }
-            
-            state = DataState.LOADING;
+    public void addPortCache(String port, TideDataCache cache) {
+        if (port != null && cache != null) {
+            portCaches.put(port, cache);
+            Log.d(TAG, "Added cache for port: " + port);
         }
-        
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Log.i(TAG, "Starting tide data initialization");
-                long startTime = System.currentTimeMillis();
-                
-                TideDataCache newCache = TideDataLoader.loadFromAssets(assetManager);
-                
-                if (newCache != null) {
-                    synchronized (stateLock) {
-                        cache = newCache;
-                        state = DataState.READY;
-                    }
-                    
-                    long loadTime = System.currentTimeMillis() - startTime;
-                    Log.i(TAG, "Tide data loaded successfully in " + loadTime + "ms. " +
-                          "Ports: " + newCache.getAvailablePorts().size() + 
-                          ", Records: " + newCache.getTotalRecordCount() +
-                          ", Memory: " + (newCache.getEstimatedMemoryUsage() / 1024) + "KB");
-                    return true;
-                } else {
-                    synchronized (stateLock) {
-                        state = DataState.ERROR;
-                    }
-                    Log.e(TAG, "Failed to load tide data");
-                    return false;
-                }
-                
-            } catch (Exception e) {
-                synchronized (stateLock) {
-                    state = DataState.ERROR;
-                }
-                Log.e(TAG, "Error during tide data initialization", e);
-                return false;
-            }
-        }, executorService);
     }
     
     /**
-     * Gets the current tide data cache
-     * @return TideDataCache if available, null otherwise
+     * Gets the tide data cache for a specific port
+     * @param port The port name
+     * @return TideDataCache if loaded, null otherwise
      */
-    public TideDataCache getCache() {
-        if (state != DataState.READY) {
-            Log.w(TAG, "Tide data cache not ready. Current state: " + state);
-            return null;
-        }
-        return cache;
+    public TideDataCache getCache(String port) {
+        return portCaches.get(port);
     }
     
     /**
-     * Gets the current state of the data loading
+     * Checks if a port is loaded and ready
      */
-    public DataState getState() {
-        return state;
+    public boolean isPortReady(String port) {
+        return portCaches.containsKey(port);
     }
     
     /**
-     * Checks if the cache is ready for use
+     * Checks if data is available for the given timestamp at a specific port
      */
-    public boolean isReady() {
-        return state == DataState.READY && cache != null;
+    public boolean isValidAt(String port, long timestamp) {
+        TideDataCache portCache = portCaches.get(port);
+        return portCache != null && portCache.isValidAt(timestamp);
     }
     
     /**
-     * Checks if data is available for the given timestamp
+     * Gets all currently loaded ports
      */
-    public boolean isValidAt(long timestamp) {
-        TideDataCache currentCache = cache;
-        return currentCache != null && currentCache.isValidAt(timestamp);
+    public java.util.Set<String> getLoadedPorts() {
+        return new java.util.HashSet<>(portCaches.keySet());
     }
     
     /**
-     * Forces a reload of tide data
-     * @param assetManager AssetManager to load data from
-     * @return CompletableFuture that completes when reloading is done
-     */
-    public CompletableFuture<Boolean> reload(AssetManager assetManager) {
-        synchronized (stateLock) {
-            state = DataState.UNINITIALIZED;
-            cache = null;
-        }
-        return initializeAsync(assetManager);
-    }
-    
-    /**
-     * Clears the cache and releases resources
+     * Clears all cached data for all ports
      */
     public void clear() {
         synchronized (stateLock) {
-            cache = null;
-            state = DataState.UNINITIALIZED;
+            portCaches.clear();
         }
-        Log.d(TAG, "Tide data cache cleared");
+        Log.d(TAG, "All tide data caches cleared");
+    }
+    
+    /**
+     * Clears cached data for a specific port
+     */
+    public void clearPort(String port) {
+        portCaches.remove(port);
+        Log.d(TAG, "Tide data cache cleared for port: " + port);
     }
     
     /**
@@ -178,7 +105,6 @@ public class TideRepository {
      */
     public void shutdown() {
         clear();
-        executorService.shutdown();
         Log.d(TAG, "TideRepository shut down");
     }
 }

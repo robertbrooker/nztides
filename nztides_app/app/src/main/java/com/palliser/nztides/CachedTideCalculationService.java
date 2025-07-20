@@ -24,7 +24,7 @@ public class CachedTideCalculationService {
     
     /**
      * Calculates the next tide information for a given port
-     * Uses cached data when available, falls back to file reading
+     * Uses lazy loading to get port data on demand
      * 
      * @param port The port name to calculate tides for
      * @return NextTideInfo object or null if calculation fails
@@ -35,18 +35,21 @@ public class CachedTideCalculationService {
             return null;
         }
         
-        // Try cached calculation first
-        if (repository.isReady()) {
-            NextTideInfo result = getNextTideFromCache(port);
-            if (result != null) {
-                return result;
-            }
-            Log.w(TAG, "Cache calculation failed for port: " + port + ", falling back to file");
-        } else {
-            Log.d(TAG, "Cache not ready, using file-based calculation for port: " + port);
+        // Use lazy loading - check if already loaded
+        if (!repository.isPortReady(port)) {
+            Log.d(TAG, "Port " + port + " not ready, will need to load first");
+            // Port not loaded yet - return null for now
+            // The caller should trigger loading and try again later
+            return null;
         }
         
-        // Fallback to file-based calculation
+        // Use cached calculation
+        NextTideInfo result = getNextTideFromCache(port);
+        if (result != null) {
+            return result;
+        }
+        
+        Log.w(TAG, "Cache calculation failed for port: " + port + ", trying file fallback");
         return getNextTideFromFile(port);
     }
     
@@ -55,8 +58,8 @@ public class CachedTideCalculationService {
      */
     private NextTideInfo getNextTideFromCache(String port) {
         try {
-            TideDataCache cache = repository.getCache();
-            if (cache == null || !cache.hasDataForPort(port)) {
+            TideDataCache cache = repository.getCache(port);
+            if (cache == null) {
                 return null;
             }
             
@@ -171,17 +174,22 @@ public class CachedTideCalculationService {
     }
     
     /**
-     * Calculates current tide height and rate using cached data when available
+     * Calculates current tide height and rate using lazy loading
      */
     public TideCalculation calculateCurrentTide(String port, long currentTimeSeconds) {
-        if (repository.isReady()) {
-            TideCalculation result = calculateCurrentTideFromCache(port, currentTimeSeconds);
-            if (result != null) {
-                return result;
-            }
+        // Use lazy loading - check if already loaded
+        if (!repository.isPortReady(port)) {
+            Log.d(TAG, "Port " + port + " not ready, will need to load first");
+            // Port not loaded yet - return null for now
+            // The caller should trigger loading and try again later
+            return null;
         }
         
-        // Fallback would go here if needed
+        TideCalculation result = calculateCurrentTideFromCache(port, currentTimeSeconds);
+        if (result != null) {
+            return result;
+        }
+        
         Log.w(TAG, "Current tide calculation not available for port: " + port);
         return null;
     }
@@ -191,8 +199,8 @@ public class CachedTideCalculationService {
      */
     private TideCalculation calculateCurrentTideFromCache(String port, long currentTimeSeconds) {
         try {
-            TideDataCache cache = repository.getCache();
-            if (cache == null || !cache.hasDataForPort(port)) {
+            TideDataCache cache = repository.getCache(port);
+            if (cache == null) {
                 return null;
             }
             

@@ -155,9 +155,11 @@ public final class TideDataCache {
      * Gets the total number of tide records across all ports
      */
     public int getTotalRecordCount() {
-        return portTideData.values().stream()
-            .mapToInt(array -> array.length)
-            .sum();
+        int total = 0;
+        for (TideRecord[] array : portTideData.values()) {
+            total += array.length;
+        }
+        return total;
     }
     
     /**
