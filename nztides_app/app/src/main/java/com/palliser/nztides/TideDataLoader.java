@@ -18,62 +18,6 @@ public class TideDataLoader {
     private static final String TAG = "TideDataLoader";
     
     /**
-     * Loads all tide data from assets into a TideDataCache
-     * @param assetManager Android AssetManager to read .tdat files
-     * @return TideDataCache containing all tide data, or null if loading fails
-     */
-    public static TideDataCache loadFromAssets(AssetManager assetManager) {
-        Map<String, List<TideRecord>> allPortData = new HashMap<>();
-        
-        // Get list of all .tdat files
-        String[] assetFiles;
-        try {
-            assetFiles = assetManager.list("");
-            if (assetFiles == null) {
-                Log.e(TAG, "Failed to list asset files");
-                return null;
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Error listing asset files", e);
-            return null;
-        }
-        
-        int loadedPorts = 0;
-        int failedPorts = 0;
-        
-        // Load each .tdat file
-        for (String filename : assetFiles) {
-            if (filename.endsWith(".tdat")) {
-                String portName = filename.substring(0, filename.length() - 5); // Remove .tdat extension
-                
-                try {
-                    List<TideRecord> portTides = loadPortData(assetManager, filename);
-                    if (portTides != null && !portTides.isEmpty()) {
-                        allPortData.put(portName, portTides);
-                        loadedPorts++;
-                        Log.d(TAG, "Loaded " + portTides.size() + " tides for port: " + portName);
-                    } else {
-                        Log.w(TAG, "No tide data loaded for port: " + portName);
-                        failedPorts++;
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to load port data: " + portName, e);
-                    failedPorts++;
-                }
-            }
-        }
-        
-        Log.i(TAG, "Tide data loading complete. Loaded: " + loadedPorts + ", Failed: " + failedPorts);
-        
-        if (allPortData.isEmpty()) {
-            Log.e(TAG, "No tide data loaded successfully");
-            return null;
-        }
-        
-        return new TideDataCache(allPortData);
-    }
-    
-    /**
      * Loads tide data for a specific port from a .tdat file
      * @param assetManager AssetManager to read from
      * @param filename Name of the .tdat file
@@ -148,8 +92,30 @@ public class TideDataLoader {
     public static TideDataCache loadSinglePortAsCache(AssetManager assetManager, String portName) {
         List<TideRecord> portTides = loadSinglePort(assetManager, portName);
         if (portTides == null || portTides.isEmpty()) {
+            Log.w(TAG, "No tide data loaded for port: " + portName);
             return null;
         }
+        
+        // Validate we have sufficient data (at least a few tides)
+        if (portTides.size() < 4) {
+            Log.w(TAG, "Insufficient tide data for port " + portName + " (only " + portTides.size() + " records)");
+            return null;
+        }
+        
+        // Check data time range
+        long currentTime = System.currentTimeMillis() / 1000;
+        TideRecord firstTide = portTides.get(0);
+        TideRecord lastTide = portTides.get(portTides.size() - 1);
+        
+        if (lastTide.timestamp < currentTime) {
+            Log.w(TAG, "Tide data for port " + portName + " is expired (last tide: " + 
+                  new java.util.Date(lastTide.timestamp * 1000L) + ")");
+            // Still return data but with warning - it might be useful for historical reference
+        }
+        
+        Log.i(TAG, "Successfully loaded " + portTides.size() + " tide records for " + portName + 
+              " (valid from " + new java.util.Date(firstTide.timestamp * 1000L) + 
+              " to " + new java.util.Date(lastTide.timestamp * 1000L) + ")");
         
         Map<String, List<TideRecord>> portData = new HashMap<>();
         portData.put(portName, portTides);

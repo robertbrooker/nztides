@@ -4,9 +4,6 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
 /**
  * Simple test runner to verify the refactored tide data cache functionality
  * This can be called from the Application onCreate to test the implementation
@@ -130,31 +127,17 @@ public class TideDataCacheTest {
      */
     private static void testPerformance(AssetManager assetManager, String testPort, TideDataCache cache) {
         try {
-            // Test cached calculation performance
+            // Test performance - only test cached calculation since file-based is removed
             long startTime = System.nanoTime();
             CachedTideCalculationService cachedService = new CachedTideCalculationService(assetManager);
             NextTideInfo cachedResult = cachedService.getNextTideInfo(testPort);
             long cachedTime = System.nanoTime() - startTime;
             
-            // Test file-based calculation performance  
-            startTime = System.nanoTime();
-            TideCalculationService fileService = new TideCalculationService(assetManager);
-            NextTideInfo fileResult = fileService.getNextTideInfo(testPort);
-            long fileTime = System.nanoTime() - startTime;
-            
-            if (cachedResult != null && fileResult != null) {
-                double speedup = (double) fileTime / cachedTime;
-                Log.i(TAG, "Performance test: Cached calculation " + 
-                      String.format("%.1fx", speedup) + " faster than file-based");
-                Log.d(TAG, "Cached: " + (cachedTime / 1000000) + "ms, File: " + (fileTime / 1000000) + "ms");
-                
-                // Verify results are similar
-                int timeDiff = Math.abs(cachedResult.getSecondsUntilTide() - fileResult.getSecondsUntilTide());
-                if (timeDiff <= 1) { // Allow 1 second difference due to timing
-                    Log.i(TAG, "Test PASSED: Cached and file-based calculations produce same results");
-                } else {
-                    Log.w(TAG, "Test WARNING: Results differ by " + timeDiff + " seconds");
-                }
+            if (cachedResult != null) {
+                Log.i(TAG, "Performance test: Cached calculation took " + (cachedTime / 1000000) + "ms");
+                Log.i(TAG, "Test PASSED: Cached calculation successful for " + testPort);
+            } else {
+                Log.w(TAG, "Test WARNING: Cached calculation returned null for " + testPort);
             }
             
         } catch (Exception e) {

@@ -43,14 +43,8 @@ public class CachedTideCalculationService {
             return null;
         }
         
-        // Use cached calculation
-        NextTideInfo result = getNextTideFromCache(port);
-        if (result != null) {
-            return result;
-        }
-        
-        Log.w(TAG, "Cache calculation failed for port: " + port + ", trying file fallback");
-        return getNextTideFromFile(port);
+        // Use cached calculation only - no fallback to file I/O
+        return getNextTideFromCache(port);
     }
     
     /**
@@ -99,76 +93,6 @@ public class CachedTideCalculationService {
             
         } catch (Exception e) {
             Log.e(TAG, "Error calculating tide from cache for port: " + port, e);
-            return null;
-        }
-    }
-    
-    /**
-     * Gets next tide info using file-based calculation (fallback)
-     * This is the original implementation for compatibility
-     */
-    private NextTideInfo getNextTideFromFile(String port) {
-        try (DataInputStream tideDataStream = new DataInputStream(assetManager.open(port + ".tdat", 1))) {
-            // Skip station name
-            tideDataStream.readLine();
-            
-            // Read timestamp for last tide in datafile
-            int lastTideInFile = TideDataReader.swapBytes(tideDataStream.readInt());
-            
-            // Skip number of records in datafile
-            tideDataStream.readInt();
-            
-            Date currentTime = new Date();
-            int currentTimeSeconds = (int) (currentTime.getTime() / 1000);
-            
-            // Check if we're past the last tide in the file
-            if (currentTimeSeconds > lastTideInFile) {
-                Log.w(TAG, "Current time is past the last tide in file for port: " + port);
-                return null;
-            }
-            
-            int previousTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
-            float previousTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
-            
-            // If first tide is in the future, return it
-            if (previousTideTime > currentTimeSeconds) {
-                // Read the next tide to determine tide type
-                tideDataStream.readInt();
-                float nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
-                
-                boolean isHighTide = previousTideHeight > nextTideHeight;
-                
-                return new NextTideInfo(isHighTide, previousTideTime, previousTideHeight, 
-                        previousTideTime - currentTimeSeconds);
-            }
-            
-            // Look through tide data file for current time
-            int nextTideTime;
-            float nextTideHeight;
-            
-            while (true) {
-                nextTideTime = TideDataReader.swapBytes(tideDataStream.readInt());
-                nextTideHeight = (float) (tideDataStream.readByte()) / 10.0f;
-                
-                if (nextTideTime > currentTimeSeconds) {
-                    break;
-                }
-
-                previousTideHeight = nextTideHeight;
-            }
-            
-            // Determine if next tide is high or low
-            boolean isNextTideHigh = nextTideHeight > previousTideHeight;
-            
-            int secondsUntilNextTide = nextTideTime - currentTimeSeconds;
-            
-            return new NextTideInfo(isNextTideHigh, nextTideTime, nextTideHeight, secondsUntilNextTide);
-            
-        } catch (IOException e) {
-            Log.e(TAG, "Error reading tide data file for port: " + port, e);
-            return null;
-        } catch (Exception e) {
-            Log.e(TAG, "Unexpected error calculating tide from file for port: " + port, e);
             return null;
         }
     }

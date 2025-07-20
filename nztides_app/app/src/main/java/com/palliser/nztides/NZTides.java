@@ -58,11 +58,11 @@ public class NZTides extends Activity {
                     
                     Log.i("NZTides", "Port " + port + " loaded successfully");
                     
-                    // Refresh UI on main thread
+                    // Refresh UI on main thread with cached calculation
                     runOnUiThread(() -> {
                         TextView tideTextView = findViewById(R.id.tide_text_view);
                         if (tideTextView != null) {
-                            String result = calculateTideOutput(port); // Recursive call after loading
+                            String result = calculateTideOutputFromCache(port); // Direct call to cache calculation
                             tideTextView.setText(result);
                         }
                     });
