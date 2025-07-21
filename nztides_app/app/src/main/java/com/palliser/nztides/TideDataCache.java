@@ -82,16 +82,7 @@ public final class TideDataCache {
         
         return new TideInterval(previous, next);
     }
-    
-    /**
-     * Gets all tide records for a port
-     * Returns a copy to maintain immutability
-     */
-    public TideRecord[] getAllTides(String port) {
-        TideRecord[] tides = portTideData.get(port);
-        return tides != null ? Arrays.copyOf(tides, tides.length) : new TideRecord[0];
-    }
-    
+
     /**
      * Gets tides for a port within a specific time range
      */
@@ -122,14 +113,7 @@ public final class TideDataCache {
         
         return Arrays.copyOfRange(allTides, startIndex, Math.min(endIndex, allTides.length));
     }
-    
-    /**
-     * Checks if data is available for the given port
-     */
-    public boolean hasDataForPort(String port) {
-        return portTideData.containsKey(port);
-    }
-    
+
     /**
      * Gets all available port names
      */
@@ -168,5 +152,43 @@ public final class TideDataCache {
     public long getEstimatedMemoryUsage() {
         // Rough estimation: each TideRecord is ~20 bytes (8 + 4 + 1 + overhead)
         return getTotalRecordCount() * 20L;
+    }
+    
+    /**
+     * Gets the next tide information for a port at the given time
+     * This is the single source of truth for next tide calculations
+     * 
+     * @param port The port name
+     * @param currentTime The current timestamp in seconds
+     * @return NextTideInfo or null if not available
+     */
+    public NextTideInfo getNextTideInfo(String port, long currentTime) {
+        try {
+            // Get the current tide interval
+            TideInterval interval = getTideInterval(port, currentTime);
+            if (interval == null || !interval.isValid()) {
+                return null;
+            }
+            
+            // The next tide is always interval.next in a valid interval
+            TideRecord nextTide = interval.next;
+            if (nextTide == null || nextTide.timestamp <= currentTime) {
+                // If interval.next is not in the future, look for the next tide after this interval
+                TideRecord[] tidesAfter = getTidesInRange(port, currentTime + 1, currentTime + 86400); // next 24 hours
+                if (tidesAfter.length > 0) {
+                    nextTide = tidesAfter[0];
+                } else {
+                    return null;
+                }
+            }
+            
+            int secondsUntilNextTide = (int) (nextTide.timestamp - currentTime);
+            
+            return new NextTideInfo(nextTide.isHighTide, (int) nextTide.timestamp, 
+                                  nextTide.height, secondsUntilNextTide);
+                                  
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

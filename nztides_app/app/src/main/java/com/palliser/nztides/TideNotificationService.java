@@ -24,7 +24,7 @@ public class TideNotificationService extends Service {
         Log.d(TAG, "Service created");
         
         notificationHelper = new NotificationHelper(this);
-        tideCalculationService = new CachedTideCalculationService(getAssets());
+        tideCalculationService = new CachedTideCalculationService();
         
         // Load current port from preferences
         loadCurrentPort();
@@ -33,14 +33,9 @@ public class TideNotificationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Service started");
-        
-        if (intent != null && Constants.ACTION_UPDATE_NOTIFICATION.equals(intent.getAction())) {
-            updateNotification();
-        } else {
-            // Initial start - update notification immediately
-            updateNotification();
-        }
-        
+
+        updateNotification();
+
         // Return START_STICKY to restart service if killed
         return START_STICKY;
     }
@@ -81,18 +76,7 @@ public class TideNotificationService extends Service {
         currentPort = prefs.getString(Constants.PREFS_CURRENT_PORT, Constants.DEFAULT_PORT);
         Log.d(TAG, "Loaded current port: " + currentPort);
     }
-    
-    /**
-     * Updates the current port and refreshes the notification
-     */
-    public void updatePort(String newPort) {
-        if (newPort != null && !newPort.equals(currentPort)) {
-            currentPort = newPort;
-            Log.d(TAG, "Port updated to: " + currentPort);
-            updateNotification();
-        }
-    }
-    
+
     @Override
     public void onDestroy() {
         Log.d(TAG, "Service destroyed");

@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -18,8 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -111,7 +108,7 @@ public class NZTides extends Activity {
             }
             
             // Calculate current tide using cached data
-            CachedTideCalculationService calcService = new CachedTideCalculationService(getAssets());
+            CachedTideCalculationService calcService = new CachedTideCalculationService();
             CachedTideCalculationService.TideCalculation currentTideCalc = 
                 calcService.calculateCurrentTide(port, currentTimeSeconds);
             

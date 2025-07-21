@@ -16,11 +16,7 @@ public class TideRepository {
     
     private final Map<String, TideDataCache> portCaches = new ConcurrentHashMap<>();
     private final Object stateLock = new Object();
-    
-    public enum DataState {
-        UNINITIALIZED, LOADING, READY, ERROR
-    }
-    
+
     private TideRepository() {
         // Simple constructor for lazy loading approach
     }
@@ -66,15 +62,7 @@ public class TideRepository {
     public boolean isPortReady(String port) {
         return portCaches.containsKey(port);
     }
-    
-    /**
-     * Checks if data is available for the given timestamp at a specific port
-     */
-    public boolean isValidAt(String port, long timestamp) {
-        TideDataCache portCache = portCaches.get(port);
-        return portCache != null && portCache.isValidAt(timestamp);
-    }
-    
+
     /**
      * Gets all currently loaded ports
      */
@@ -91,15 +79,7 @@ public class TideRepository {
         }
         Log.d(TAG, "All tide data caches cleared");
     }
-    
-    /**
-     * Clears cached data for a specific port
-     */
-    public void clearPort(String port) {
-        portCaches.remove(port);
-        Log.d(TAG, "Tide data cache cleared for port: " + port);
-    }
-    
+
     /**
      * Shuts down the repository and releases resources
      */

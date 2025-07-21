@@ -18,8 +18,7 @@ public final class Constants {
     
     // Intent Actions
     public static final String ACTION_UPDATE_NOTIFICATION = "com.palliser.nztides.UPDATE_NOTIFICATION";
-    public static final String ACTION_BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED";
-    
+
     // Default Values
     public static final String DEFAULT_PORT = "Auckland";
     public static final int RECENT_PORTS_COUNT = 3;

@@ -11,7 +11,6 @@ import java.util.Locale;
 public class TideFormatter {
     private static final DecimalFormat HEIGHT_FORMAT = new DecimalFormat(" 0.00;-0.00");
     private static final DecimalFormat CURRENT_HEIGHT_FORMAT = new DecimalFormat(" 0.0;-0.0");
-    private static final DecimalFormat TIME_FORMAT = new DecimalFormat("00");
     private static final DecimalFormat RISE_RATE_FORMAT = new DecimalFormat("0");
     
     private static final SimpleDateFormat FULL_DATE_FORMAT = new SimpleDateFormat("HH:mm E dd/MM/yy zzz", Locale.ENGLISH);
@@ -68,39 +67,5 @@ public class TideFormatter {
             return String.format("%d minutes", minutes);
         }
     }
-    
-    /**
-     * Format time ago in readable format
-     */
-    public static String formatTimeAgo(long seconds) {
-        long hours = seconds / 3600;
-        long minutes = (seconds / 60) % 60;
-        
-        if (hours > 0) {
-            return String.format("%dh%02dm ago", hours, minutes);
-        } else {
-            return String.format("%dm ago", minutes);
-        }
-    }
-    
-    /**
-     * Format time until in readable format  
-     */
-    public static String formatTimeUntil(long seconds) {
-        long hours = seconds / 3600;
-        long minutes = (seconds / 60) % 60;
-        
-        if (hours > 0) {
-            return String.format("%dh%02dm", hours, minutes);
-        } else {
-            return String.format("%dm", minutes);
-        }
-    }
-    
-    /**
-     * Format time for tide record display
-     */
-    public static String formatTime(long timestamp) {
-        return HOUR_MINUTE_FORMAT.format(new Date(1000 * timestamp));
-    }
+
 }

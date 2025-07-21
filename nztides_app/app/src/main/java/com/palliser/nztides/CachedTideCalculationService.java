@@ -1,11 +1,6 @@
 package com.palliser.nztides;
 
-import android.content.res.AssetManager;
 import android.util.Log;
-
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.util.Date;
 
 /**
  * Enhanced tide calculation service using cached data when available
@@ -14,11 +9,9 @@ import java.util.Date;
  */
 public class CachedTideCalculationService {
     private static final String TAG = "CachedTideCalcService";
-    private final AssetManager assetManager;
     private final TideRepository repository;
     
-    public CachedTideCalculationService(AssetManager assetManager) {
-        this.assetManager = assetManager;
+    public CachedTideCalculationService() {
         this.repository = TideRepository.getInstance();
     }
     
@@ -65,31 +58,8 @@ public class CachedTideCalculationService {
                 return null;
             }
             
-            TideInterval interval = cache.getTideInterval(port, currentTime);
-            if (interval == null || !interval.isValid()) {
-                Log.w(TAG, "No valid tide interval found for port: " + port);
-                return null;
-            }
-            
-            // Determine which tide is next
-            TideRecord nextTide;
-            if (interval.next != null && interval.next.timestamp > currentTime) {
-                nextTide = interval.next;
-            } else {
-                // Look for the tide after the current interval
-                TideRecord[] tidesAfter = cache.getTidesInRange(port, currentTime, currentTime + 86400); // next 24 hours
-                if (tidesAfter.length > 0) {
-                    nextTide = tidesAfter[0];
-                } else {
-                    Log.w(TAG, "No future tides found for port: " + port);
-                    return null;
-                }
-            }
-            
-            int secondsUntilNextTide = (int) (nextTide.timestamp - currentTime);
-            
-            return new NextTideInfo(nextTide.isHighTide, (int) nextTide.timestamp, 
-                                  nextTide.height, secondsUntilNextTide);
+            // Use the single source of truth for next tide calculation
+            return cache.getNextTideInfo(port, currentTime);
             
         } catch (Exception e) {
             Log.e(TAG, "Error calculating tide from cache for port: " + port, e);

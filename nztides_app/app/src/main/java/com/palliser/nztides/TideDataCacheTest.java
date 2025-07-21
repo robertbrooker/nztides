@@ -82,7 +82,7 @@ public class TideDataCacheTest {
                     Log.i(TAG, "Test PASSED: Tide interval calculation successful for " + testPort);
                     
                     // Test cached calculation service
-                    CachedTideCalculationService calcService = new CachedTideCalculationService(assetManager);
+                    CachedTideCalculationService calcService = new CachedTideCalculationService();
                     NextTideInfo nextTide = calcService.getNextTideInfo(testPort);
                     
                     if (nextTide != null) {
@@ -96,7 +96,10 @@ public class TideDataCacheTest {
                     Log.w(TAG, "Test WARNING: Invalid tide interval for " + testPort);
                 }
                 
-                // Test 5: Performance comparison
+                // Test 5: Test tide type determination fix
+                testTideTypeAccuracy(assetManager, testPort, portCache);
+                
+                // Test 6: Performance comparison
                 testPerformance(assetManager, testPort, portCache);
                 
                 // Test 6: Test loading a second port to verify lazy loading
@@ -129,7 +132,7 @@ public class TideDataCacheTest {
         try {
             // Test performance - only test cached calculation since file-based is removed
             long startTime = System.nanoTime();
-            CachedTideCalculationService cachedService = new CachedTideCalculationService(assetManager);
+            CachedTideCalculationService cachedService = new CachedTideCalculationService();
             NextTideInfo cachedResult = cachedService.getNextTideInfo(testPort);
             long cachedTime = System.nanoTime() - startTime;
             
@@ -142,6 +145,79 @@ public class TideDataCacheTest {
             
         } catch (Exception e) {
             Log.w(TAG, "Performance test failed", e);
+        }
+    }
+    
+    /**
+     * Test tide type determination accuracy
+     */
+    private static void testTideTypeAccuracy(AssetManager assetManager, String testPort, TideDataCache cache) {
+        try {
+            Log.i(TAG, "Testing tide type determination accuracy for " + testPort + "...");
+            
+            // Get a sample of tides and check that heights make sense for their types
+            long currentTime = System.currentTimeMillis() / 1000;
+            TideRecord[] sampleTides = cache.getTidesInRange(testPort, currentTime, currentTime + (7 * 24 * 3600)); // next 7 days
+            
+            if (sampleTides.length < 10) {
+                Log.w(TAG, "Not enough tide data for accuracy test");
+                return;
+            }
+            
+            int highTideCount = 0;
+            int lowTideCount = 0;
+            int accurateClassifications = 0;
+            
+            // Check several consecutive tides to ensure they alternate high/low correctly
+            for (int i = 1; i < Math.min(sampleTides.length - 1, 20); i++) {
+                TideRecord prevTide = sampleTides[i - 1];
+                TideRecord currentTide = sampleTides[i];
+                TideRecord nextTide = sampleTides[i + 1];
+                
+                if (currentTide.isHighTide) {
+                    highTideCount++;
+                    // High tide should be higher than adjacent tides
+                    if (currentTide.height > prevTide.height && currentTide.height > nextTide.height) {
+                        accurateClassifications++;
+                    } else {
+                        Log.w(TAG, "Incorrectly classified HIGH tide at " + 
+                              new java.util.Date(currentTide.timestamp * 1000L) + 
+                              " - height " + currentTide.height + "m not higher than neighbors (" + 
+                              prevTide.height + "m, " + nextTide.height + "m)");
+                    }
+                } else {
+                    lowTideCount++;
+                    // Low tide should be lower than adjacent tides
+                    if (currentTide.height < prevTide.height && currentTide.height < nextTide.height) {
+                        accurateClassifications++;
+                    } else {
+                        Log.w(TAG, "Incorrectly classified LOW tide at " + 
+                              new java.util.Date(currentTide.timestamp * 1000L) + 
+                              " - height " + currentTide.height + "m not lower than neighbors (" + 
+                              prevTide.height + "m, " + nextTide.height + "m)");
+                    }
+                }
+            }
+            
+            int totalChecked = Math.min(sampleTides.length - 2, 19); // -2 because we skip first and last
+            double accuracy = (double) accurateClassifications / totalChecked * 100;
+            
+            Log.i(TAG, "Tide Type Test Results:");
+            Log.i(TAG, "  - Checked " + totalChecked + " tides");
+            Log.i(TAG, "  - High tides: " + highTideCount + ", Low tides: " + lowTideCount);
+            Log.i(TAG, "  - Accurate classifications: " + accurateClassifications + "/" + totalChecked + " (" + 
+                  String.format("%.1f%%", accuracy) + ")");
+            
+            if (accuracy >= 90.0) {
+                Log.i(TAG, "Test PASSED: Tide type determination accuracy is good (" + 
+                      String.format("%.1f%%", accuracy) + ")");
+            } else {
+                Log.w(TAG, "Test WARNING: Tide type determination accuracy is low (" + 
+                      String.format("%.1f%%", accuracy) + ")");
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Tide type accuracy test failed", e);
         }
     }
 }

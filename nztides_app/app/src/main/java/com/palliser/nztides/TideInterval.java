@@ -20,13 +20,6 @@ public final class TideInterval {
         return previous != null && next != null;
     }
 
-    /**
-     * Returns the duration of this interval in seconds
-     */
-    public long getDurationSeconds() {
-        return isValid() ? next.timestamp - previous.timestamp : 0;
-    }
-    
     @Override
     public String toString() {
         return String.format("TideInterval{previous=%s, next=%s}", previous, next);

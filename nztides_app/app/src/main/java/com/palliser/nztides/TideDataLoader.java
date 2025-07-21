@@ -38,18 +38,40 @@ public class TideDataLoader {
             
             Log.d(TAG, "Loading " + numRecords + " records for " + filename);
             
-            boolean isHighTide = false; // Tides alternate between high and low
+            if (numRecords < 2) {
+                Log.w(TAG, "Insufficient tide records in file: " + filename);
+                return null;
+            }
             
-            // Read all tide records
-            for (int i = 0; i < numRecords; i++) {
+            // Pre-read first two tides to establish pattern
+            int firstTideTime = TideDataReader.swapBytes(stream.readInt());
+            float firstTideHeight = (float) (stream.readByte()) / 10.0f;
+            
+            int secondTideTime = TideDataReader.swapBytes(stream.readInt());
+            float secondTideHeight = (float) (stream.readByte()) / 10.0f;
+            
+            // Determine if first tide is high or low based on second tide
+            boolean firstIsHigh = firstTideHeight > secondTideHeight;
+            
+            // Create first tide record
+            TideRecord firstTide = new TideRecord(firstTideTime, firstTideHeight, firstIsHigh);
+            tideRecords.add(firstTide);
+            
+            // Read the rest of the tides, alternating high/low status
+            boolean currentTideIsHigh = !firstIsHigh; // Second tide is opposite of first
+            TideRecord secondTide = new TideRecord(secondTideTime, secondTideHeight, currentTideIsHigh);
+            tideRecords.add(secondTide);
+            
+            // Read remaining tides (already read 2)
+            for (int i = 2; i < numRecords; i++) {
                 try {
-                    int timestamp = TideDataReader.swapBytes(stream.readInt());
-                    float height = (float) (stream.readByte()) / 10.0f;
+                    int tideTime = TideDataReader.swapBytes(stream.readInt());
+                    float tideHeight = (float) (stream.readByte()) / 10.0f;
                     
-                    // Alternate between high and low tides
-                    isHighTide = !isHighTide;
+                    // Alternate tide status
+                    currentTideIsHigh = !currentTideIsHigh;
                     
-                    TideRecord record = new TideRecord(timestamp, height, isHighTide);
+                    TideRecord record = new TideRecord(tideTime, tideHeight, currentTideIsHigh);
                     tideRecords.add(record);
                     
                 } catch (IOException e) {

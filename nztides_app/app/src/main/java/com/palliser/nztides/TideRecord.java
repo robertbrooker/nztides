@@ -14,15 +14,7 @@ public final class TideRecord {
         this.height = height;
         this.isHighTide = isHighTide;
     }
-    
-    /**
-     * Creates a new TideRecord with the specified high/low tide flag
-     * (for compatibility with old TideData.withTideType method)
-     */
-    public TideRecord withTideType(boolean isHighTide) {
-        return new TideRecord(this.timestamp, this.height, isHighTide);
-    }
-    
+
     // Getter methods for compatibility with old TideData usage
     public long getTimestamp() {
         return timestamp;
