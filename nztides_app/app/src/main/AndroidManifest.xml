@@ -25,17 +25,17 @@
         </activity>
         
         <!-- Notification settings activity -->
-        <activity android:name=".NotificationSettingsActivity"
+        <activity android:name=".notification.NotificationSettingsActivity"
                   android:label="@string/menu_notification_settings"
                   android:exported="false" />
         
         <!-- Tide notification service -->
-        <service android:name=".TideNotificationService"
+        <service android:name=".notification.TideNotificationService"
                  android:enabled="true"
                  android:exported="false" />
         
         <!-- Broadcast receiver for scheduled updates and boot events -->
-        <receiver android:name=".TideUpdateReceiver"
+        <receiver android:name=".notification.TideUpdateReceiver"
                   android:enabled="true"
                   android:exported="false">
             <intent-filter android:priority="1000">

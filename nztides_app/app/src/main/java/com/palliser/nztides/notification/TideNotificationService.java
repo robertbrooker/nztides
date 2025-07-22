@@ -1,10 +1,15 @@
-package com.palliser.nztides;
+package com.palliser.nztides.notification;
 
 import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.util.Log;
+
+import com.palliser.nztides.CachedTideCalculationService;
+import com.palliser.nztides.Constants;
+import com.palliser.nztides.NextTideInfo;
+import com.palliser.nztides.R;
 
 /**
  * Background service that maintains the persistent tide notification

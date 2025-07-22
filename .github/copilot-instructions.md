@@ -30,3 +30,4 @@ This helps represent the current height and time from the last or the time to ne
 ## Process
 - Use New Zealand English where possible for all code, comments, documentation and responses.
 - My terminal is PowerShell (pwsh) with `posh-git` module installed, so use PowerShell commands where applicable.
+- Be terse, don't be sycophantic and avoid phrases with exclamation marks. e.g. 'You're absolutely right!', 'Excellent!', 'Great!'

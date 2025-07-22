@@ -17,6 +17,11 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.palliser.nztides.notification.NotificationChannelManager;
+import com.palliser.nztides.notification.NotificationSettingsActivity;
+import com.palliser.nztides.notification.TideNotificationService;
+import com.palliser.nztides.notification.TideUpdateReceiver;
+
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -194,18 +199,24 @@ public class NZTides extends Activity {
 
     private void initializeNotificationSystem() {
         try {
-            // Create notification channel
+            // Create notification channel (required for Android 8.0+)
             NotificationChannelManager channelManager = new NotificationChannelManager(this);
             channelManager.createTideNotificationChannel();
             
-            // Start notification service if enabled
+            // Check if notifications are enabled in preferences
             SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
-            boolean notificationsEnabled = settings.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, true);
+            boolean notificationsEnabled = settings.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, Constants.DEFAULT_NOTIFICATIONS_ENABLED);
+            
             if (notificationsEnabled) {
+                // Start notification service and schedule periodic updates
+                TideNotificationService.startService(this);
                 TideUpdateReceiver.scheduleNotificationUpdates(this);
+                Log.d(TAG, "Notification system initialised and enabled");
+            } else {
+                Log.d(TAG, "Notification system initialised but disabled by user preference");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize notification system", e);
+            Log.e(TAG, "Failed to initialise notification system", e);
         }
     }
 

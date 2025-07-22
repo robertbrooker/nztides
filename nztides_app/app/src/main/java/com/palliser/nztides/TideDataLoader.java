@@ -16,7 +16,19 @@ import java.util.Map;
  */
 public class TideDataLoader {
     private static final String TAG = "TideDataLoader";
-    
+
+    /**
+     * Swaps byte order for endianness conversion
+     * Centralized implementation to avoid duplication
+     */
+    public static int swapBytes(int value) {
+        int b1 = (value) & 0xff;
+        int b2 = (value >>  8) & 0xff;
+        int b3 = (value >> 16) & 0xff;
+        int b4 = (value >> 24) & 0xff;
+        return b1 << 24 | b2 << 16 | b3 << 8 | b4;
+    }
+
     /**
      * Loads tide data for a specific port from a .tdat file
      * @param assetManager AssetManager to read from
@@ -31,10 +43,10 @@ public class TideDataLoader {
             stream.readLine();
             
             // Read timestamp for last tide in datafile
-            int lastTideTimestamp = TideDataReader.swapBytes(stream.readInt());
+            int lastTideTimestamp = swapBytes(stream.readInt());
             
             // Read number of records
-            int numRecords = TideDataReader.swapBytes(stream.readInt());
+            int numRecords = swapBytes(stream.readInt());
             
             Log.d(TAG, "Loading " + numRecords + " records for " + filename);
             
@@ -44,10 +56,10 @@ public class TideDataLoader {
             }
             
             // Pre-read first two tides to establish pattern
-            int firstTideTime = TideDataReader.swapBytes(stream.readInt());
+            int firstTideTime = swapBytes(stream.readInt());
             float firstTideHeight = (float) (stream.readByte()) / 10.0f;
             
-            int secondTideTime = TideDataReader.swapBytes(stream.readInt());
+            int secondTideTime = swapBytes(stream.readInt());
             float secondTideHeight = (float) (stream.readByte()) / 10.0f;
             
             // Determine if first tide is high or low based on second tide
@@ -65,7 +77,7 @@ public class TideDataLoader {
             // Read remaining tides (already read 2)
             for (int i = 2; i < numRecords; i++) {
                 try {
-                    int tideTime = TideDataReader.swapBytes(stream.readInt());
+                    int tideTime = swapBytes(stream.readInt());
                     float tideHeight = (float) (stream.readByte()) / 10.0f;
                     
                     // Alternate tide status

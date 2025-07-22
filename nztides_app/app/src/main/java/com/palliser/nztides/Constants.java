@@ -21,6 +21,7 @@ public final class Constants {
 
     // Default Values
     public static final String DEFAULT_PORT = "Auckland";
+    public static final boolean DEFAULT_NOTIFICATIONS_ENABLED = true;
     public static final int RECENT_PORTS_COUNT = 3;
     public static final int RECORDS_TO_DISPLAY = 35 * 4; // About 35 days of tides
 

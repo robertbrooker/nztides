@@ -1,4 +1,4 @@
-package com.palliser.nztides;
+package com.palliser.nztides.notification;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -7,6 +7,12 @@ import android.content.Intent;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+
+import com.palliser.nztides.Constants;
+import com.palliser.nztides.NextTideInfo;
+import com.palliser.nztides.NZTides;
+import com.palliser.nztides.R;
+import com.palliser.nztides.TideFormatter;
 
 /**
  * Helper class for building and managing tide notifications

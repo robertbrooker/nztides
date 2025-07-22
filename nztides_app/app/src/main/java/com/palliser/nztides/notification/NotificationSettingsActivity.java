@@ -1,4 +1,4 @@
-package com.palliser.nztides;
+package com.palliser.nztides.notification;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
@@ -8,6 +8,9 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Button;
+
+import com.palliser.nztides.Constants;
+import com.palliser.nztides.R;
 
 /**
  * Simple activity for managing notification preferences
@@ -44,7 +47,7 @@ public class NotificationSettingsActivity extends Activity {
     private void loadSettings() {
         SharedPreferences prefs = getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE);
         
-        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, false);
+        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, Constants.DEFAULT_NOTIFICATIONS_ENABLED);
         enableNotificationsCheckbox.setChecked(notificationsEnabled);
         
         int updateFrequency = prefs.getInt(Constants.PREFS_UPDATE_FREQUENCY, Constants.DEFAULT_UPDATE_INTERVAL_MINUTES);

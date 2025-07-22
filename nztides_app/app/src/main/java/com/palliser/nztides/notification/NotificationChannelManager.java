@@ -1,4 +1,4 @@
-package com.palliser.nztides;
+package com.palliser.nztides.notification;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -8,6 +8,9 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+
+import com.palliser.nztides.Constants;
+import com.palliser.nztides.R;
 
 /**
  * Manages notification channels and permission checks for the tide notification system

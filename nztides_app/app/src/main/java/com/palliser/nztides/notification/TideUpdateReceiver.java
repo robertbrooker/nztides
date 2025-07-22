@@ -1,4 +1,4 @@
-package com.palliser.nztides;
+package com.palliser.nztides.notification;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
+
+import com.palliser.nztides.Constants;
 
 /**
  * BroadcastReceiver that handles scheduled tide notification updates
@@ -41,7 +43,7 @@ public class TideUpdateReceiver extends BroadcastReceiver {
     private void handleScheduledUpdate(Context context) {
         // Check if notifications are enabled in preferences
         SharedPreferences prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE);
-        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, false);
+        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, Constants.DEFAULT_NOTIFICATIONS_ENABLED);
         
         if (notificationsEnabled) {
             Log.d(TAG, "Triggering scheduled notification update");
@@ -94,7 +96,7 @@ public class TideUpdateReceiver extends BroadcastReceiver {
         Log.d(TAG, "Device boot completed, checking if notifications should be restored");
         
         SharedPreferences prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE);
-        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, false);
+        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, Constants.DEFAULT_NOTIFICATIONS_ENABLED);
         
         if (notificationsEnabled) {
             Log.d(TAG, "Restoring tide notifications after boot");
@@ -110,7 +112,7 @@ public class TideUpdateReceiver extends BroadcastReceiver {
         Log.d(TAG, "App updated, checking notification settings");
         
         SharedPreferences prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE);
-        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, false);
+        boolean notificationsEnabled = prefs.getBoolean(Constants.PREFS_NOTIFICATIONS_ENABLED, Constants.DEFAULT_NOTIFICATIONS_ENABLED);
         
         if (notificationsEnabled) {
             Log.d(TAG, "Re-enabling notifications after app update");
