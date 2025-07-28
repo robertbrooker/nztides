@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 
 public class NZTides extends Activity {
 
@@ -40,82 +41,50 @@ public class NZTides extends Activity {
     private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 
     public String calculateTideOutput(String port) {
-        // Use lazy loading for the specific port
-        TideRepository repository = TideRepository.getInstance();
+        // Use simple tide service - no caching, load fresh data each time
+        SimpleTideService tideService = SimpleTideService.getInstance();
         
-        // Check if port is already loaded
-        if (repository.isPortReady(port)) {
-            return calculateTideOutputFromCache(port);
-        }
-        
-        // Port not loaded yet - load it in background and show loading message
-        // Start background loading
-        new Thread(() -> {
-            try {
-                // Load the port data directly and cache it manually
-                TideDataCache cache = TideDataLoader.loadSinglePortAsCache(getAssets(), port);
-                if (cache != null) {
-                    // Manually add to repository cache
-                    repository.addPortCache(port, cache);
-                    
-                    Log.i("NZTides", "Port " + port + " loaded successfully");
-                    
-                    // Refresh UI on main thread with cached calculation
-                    runOnUiThread(() -> {
-                        TextView tideTextView = findViewById(R.id.tide_text_view);
-                        if (tideTextView != null) {
-                            String result = calculateTideOutputFromCache(port); // Direct call to cache calculation
-                            tideTextView.setText(result);
-                        }
-                    });
-                } else {
-                    Log.e("NZTides", "Failed to load cache for port " + port);
-                }
-            } catch (Exception e) {
-                Log.e("NZTides", "Error loading tide data for port: " + port, e);
-                runOnUiThread(() -> {
-                    TextView tideTextView = findViewById(R.id.tide_text_view);
-                    if (tideTextView != null) {
-                        tideTextView.setText("Error loading tide data for " + port + ". Please try again.");
-                    }
-                });
+        try {
+            // Load tide data directly
+            List<TideRecord> tides = tideService.loadPortData(getAssets(), port);
+            if (tides == null || tides.isEmpty()) {
+                return "No tide data available for " + port;
             }
-        }).start();
-        
-        return "Loading tide data for " + port + "...\n\nPlease wait a moment for the data to load.";
+            
+            return calculateTideOutputFromData(port, tides);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error loading tide data for " + port, e);
+            return "Error loading tide data for " + port + ": " + e.getMessage();
+        }
     }
     
     /**
-     * Calculate tide output using cached data
+     * Calculate tide output using loaded tide data
      */
-    private String calculateTideOutputFromCache(String port) {
+    private String calculateTideOutputFromData(String port, List<TideRecord> tides) {
         try {
-            TideRepository repository = TideRepository.getInstance();
-            TideDataCache cache = repository.getCache(port);
-            if (cache == null) {
-                return "No tide data available for " + port;
-            }
+            SimpleTideService tideService = SimpleTideService.getInstance();
             
             StringBuilder outputString = new StringBuilder();
             Date currentTime = new Date();
             long currentTimeSeconds = currentTime.getTime() / 1000;
             
             // Check if we have valid data for current time
-            if (!cache.isValidAt(currentTimeSeconds)) {
+            if (!tideService.isValidAt(tides, currentTimeSeconds)) {
                 outputString.append("Tide data has expired. Please update the app for current predictions.");
                 return outputString.toString();
             }
             
-            TideInterval interval = cache.getTideInterval(port, currentTimeSeconds);
+            TideInterval interval = tideService.getTideInterval(tides, currentTimeSeconds);
             if (interval == null || !interval.isValid()) {
                 outputString.append("No tide data available for the current time at ").append(port);
                 return outputString.toString();
             }
             
-            // Calculate current tide using cached data
-            CachedTideCalculationService calcService = new CachedTideCalculationService();
-            CachedTideCalculationService.TideCalculation currentTideCalc = 
-                calcService.calculateCurrentTide(port, currentTimeSeconds);
+            // Calculate current tide using simple tide service
+            SimpleTideService.TideCalculation currentTideCalc = 
+                tideService.calculateCurrentTide(tides, currentTimeSeconds);
             
             if (currentTideCalc == null) {
                 return "Unable to calculate current tide for " + port;
@@ -148,16 +117,24 @@ public class NZTides extends Activity {
             // Display ASCII tide graph
             outputString.append(tideGraphStr);
             
-            // Display tide records from cache
-            displayTideRecordsFromCache(outputString, cache, port, currentTimeSeconds);
+            // Display tide records from loaded data
+            displayTideRecordsFromData(outputString, tides, port, currentTimeSeconds);
+            
+            // Find the latest tide timestamp for "last tide" message
+            long latestTimestamp = 0;
+            for (TideRecord tide : tides) {
+                if (tide.timestamp > latestTimestamp) {
+                    latestTimestamp = tide.timestamp;
+                }
+            }
             
             outputString.append("The last tide in this datafile occurs at:\n");
-            outputString.append(TideFormatter.formatFullDate(cache.getDataValidUntil()));
+            outputString.append(TideFormatter.formatFullDate(latestTimestamp));
             
             return outputString.toString();
             
         } catch (Exception e) {
-            Log.e("NZTides", "Error calculating tide output from cache", e);
+            Log.e(TAG, "Error calculating tide output from data", e);
             return "Error calculating tide data for " + port + ". Please try again.";
         }
     }
@@ -358,12 +335,14 @@ public class NZTides extends Activity {
     }
 
     /**
-     * Display tide records using cached data
+     * Display tide records using loaded tide data
      */
-    private void displayTideRecordsFromCache(StringBuilder outputString, TideDataCache cache, String port, long currentTimeSeconds) {
+    private void displayTideRecordsFromData(StringBuilder outputString, List<TideRecord> tides, String port, long currentTimeSeconds) {
+        SimpleTideService tideService = SimpleTideService.getInstance();
+        
         // Get tides for next 30 days (roughly 120 tides)
         long endTime = currentTimeSeconds + (30 * 24 * 3600);
-        TideRecord[] upcomingTides = cache.getTidesInRange(port, currentTimeSeconds, endTime);
+        TideRecord[] upcomingTides = tideService.getTidesInRange(tides, currentTimeSeconds, endTime);
         
         if (upcomingTides.length == 0) {
             outputString.append("\nNo upcoming tide data available.\n");
@@ -389,8 +368,7 @@ public class NZTides extends Activity {
             }
             
             // Format tide record using the same format as displayTideRecords
-            TideRecord tideData = new TideRecord(tide.timestamp, tide.height, tide.isHighTide);
-            outputString.append(TideFormatter.formatTideRecord(tideData));
+            outputString.append(TideFormatter.formatTideRecord(tide));
         }
     }
 

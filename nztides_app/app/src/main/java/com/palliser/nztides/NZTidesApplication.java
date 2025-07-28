@@ -14,21 +14,23 @@ public class NZTidesApplication extends Application {
     public void onCreate() {
         super.onCreate();
         
-        Log.i(TAG, "NZ Tides application starting - using lazy loading for tide data");
+        Log.i(TAG, "NZ Tides application starting - using simplified on-demand data loading");
         
-        // With lazy loading, we no longer need to initialize all tide data at startup
-        // Data will be loaded on-demand when a port is first accessed
+        // With simplified loading, we no longer need to initialize any caches
+        // Data will be loaded fresh on-demand when a port is accessed
         onTideDataReady();
         
-        // Run tests to verify lazy loading functionality in background thread
+        // Note: TideDataCacheTest is no longer relevant with simplified approach
+        // Run tests to verify simplified functionality in background thread
         new Thread(() -> {
-            Boolean testSuccess = TideDataCacheTest.runTests(this);
+            Boolean testSuccess = SimpleTideServiceTest.runTests(this);
             if (testSuccess != null && testSuccess) {
-                Log.i(TAG, "All cache tests passed!");
+                Log.i(TAG, "All simplified service tests passed!");
             } else {
-                Log.w(TAG, "Some cache tests failed - check logs");
+                Log.w(TAG, "Some simplified service tests failed - check logs");
             }
         }).start();
+        Log.i(TAG, "Application ready - tide data will be loaded on demand");
     }
     
     /**
@@ -43,8 +45,7 @@ public class NZTidesApplication extends Application {
     public void onTerminate() {
         super.onTerminate();
         
-        // Clean up resources
-        TideRepository.getInstance().shutdown();
+        // No cleanup needed with simplified approach
         Log.i(TAG, "NZ Tides application terminated");
     }
     
@@ -52,8 +53,6 @@ public class NZTidesApplication extends Application {
     public void onLowMemory() {
         super.onLowMemory();
         
-        Log.w(TAG, "Low memory warning received");
-        // In extreme cases, we could clear the cache here
-        // But for our relatively small dataset, it's probably better to keep it
+        Log.w(TAG, "Low memory warning received - no caches to clear with simplified approach");
     }
 }

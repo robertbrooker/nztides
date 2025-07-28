@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.palliser.nztides.CachedTideCalculationService;
+import com.palliser.nztides.SimpleTideService;
 import com.palliser.nztides.Constants;
 import com.palliser.nztides.NextTideInfo;
 import com.palliser.nztides.R;
@@ -20,7 +20,7 @@ public class TideNotificationService extends Service {
     private static final String TAG = "TideNotificationService";
     
     private NotificationHelper notificationHelper;
-    private CachedTideCalculationService tideCalculationService;
+    private SimpleTideService tideService;
     private String currentPort;
     
     @Override
@@ -29,7 +29,7 @@ public class TideNotificationService extends Service {
         Log.d(TAG, "Service created");
         
         notificationHelper = new NotificationHelper(this);
-        tideCalculationService = new CachedTideCalculationService();
+        tideService = SimpleTideService.getInstance();
         
         // Load current port from preferences
         loadCurrentPort();
@@ -55,16 +55,28 @@ public class TideNotificationService extends Service {
         }
         
         try {
-            NextTideInfo nextTide = tideCalculationService.getNextTideInfo(currentPort);
+            // Load tide data directly for this port
+            java.util.List<com.palliser.nztides.TideRecord> tides = 
+                tideService.loadPortData(getAssets(), currentPort);
             
-            if (nextTide != null) {
-                notificationHelper.showTideNotification(nextTide, currentPort);
-                Log.d(TAG, "Updated notification for " + currentPort + ": " + nextTide);
+            if (tides != null && !tides.isEmpty()) {
+                long currentTime = System.currentTimeMillis() / 1000;
+                NextTideInfo nextTide = tideService.getNextTideInfo(tides, currentTime);
+                
+                if (nextTide != null) {
+                    notificationHelper.showTideNotification(nextTide, currentPort);
+                    Log.d(TAG, "Updated notification for " + currentPort + ": " + nextTide);
+                } else {
+                    // Show error notification
+                    notificationHelper.showErrorNotification(currentPort, 
+                            getString(R.string.error_calculating_tides));
+                    Log.w(TAG, "Failed to calculate tide info for " + currentPort);
+                }
             } else {
                 // Show error notification
                 notificationHelper.showErrorNotification(currentPort, 
-                        getString(R.string.error_calculating_tides));
-                Log.w(TAG, "Failed to calculate tide info for " + currentPort);
+                        "No tide data available");
+                Log.w(TAG, "No tide data available for " + currentPort);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error updating notification", e);
