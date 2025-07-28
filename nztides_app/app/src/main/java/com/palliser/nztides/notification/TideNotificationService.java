@@ -6,7 +6,7 @@ import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.palliser.nztides.SimpleTideService;
+import com.palliser.nztides.TideService;
 import com.palliser.nztides.Constants;
 import com.palliser.nztides.NextTideInfo;
 import com.palliser.nztides.R;
@@ -20,7 +20,7 @@ public class TideNotificationService extends Service {
     private static final String TAG = "TideNotificationService";
     
     private NotificationHelper notificationHelper;
-    private SimpleTideService tideService;
+    private TideService tideService;
     private String currentPort;
     
     @Override
@@ -29,7 +29,7 @@ public class TideNotificationService extends Service {
         Log.d(TAG, "Service created");
         
         notificationHelper = new NotificationHelper(this);
-        tideService = SimpleTideService.getInstance();
+        tideService = TideService.getInstance();
         
         // Load current port from preferences
         loadCurrentPort();

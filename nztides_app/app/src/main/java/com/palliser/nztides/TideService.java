@@ -10,26 +10,25 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Simple tide service that loads data on-demand for each port
- * No caching - loads fresh data every time a port is requested
- * Simplified approach replacing TideRepository, TideDataCache, and TideDataLoader
+ * Tide service that loads data on-demand for each port
+ * Loads fresh data from assets every time a port is requested
  */
-public class SimpleTideService {
-    private static final String TAG = "SimpleTideService";
-    private static volatile SimpleTideService instance;
+public class TideService {
+    private static final String TAG = "TideService";
+    private static volatile TideService instance;
     
-    private SimpleTideService() {
+    private TideService() {
         // Private constructor for singleton
     }
     
     /**
      * Gets the singleton instance
      */
-    public static SimpleTideService getInstance() {
+    public static TideService getInstance() {
         if (instance == null) {
-            synchronized (SimpleTideService.class) {
+            synchronized (TideService.class) {
                 if (instance == null) {
-                    instance = new SimpleTideService();
+                    instance = new TideService();
                 }
             }
         }

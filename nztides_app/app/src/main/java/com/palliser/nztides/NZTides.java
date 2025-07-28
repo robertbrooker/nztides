@@ -41,8 +41,8 @@ public class NZTides extends Activity {
     private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 
     public String calculateTideOutput(String port) {
-        // Use simple tide service - no caching, load fresh data each time
-        SimpleTideService tideService = SimpleTideService.getInstance();
+        // Use tide service - loads fresh data each time
+        TideService tideService = TideService.getInstance();
         
         try {
             // Load tide data directly
@@ -64,7 +64,7 @@ public class NZTides extends Activity {
      */
     private String calculateTideOutputFromData(String port, List<TideRecord> tides) {
         try {
-            SimpleTideService tideService = SimpleTideService.getInstance();
+            TideService tideService = TideService.getInstance();
             
             StringBuilder outputString = new StringBuilder();
             Date currentTime = new Date();
@@ -82,8 +82,8 @@ public class NZTides extends Activity {
                 return outputString.toString();
             }
             
-            // Calculate current tide using simple tide service
-            SimpleTideService.TideCalculation currentTideCalc = 
+            // Calculate current tide using tide service
+            TideService.TideCalculation currentTideCalc = 
                 tideService.calculateCurrentTide(tides, currentTimeSeconds);
             
             if (currentTideCalc == null) {
@@ -335,7 +335,7 @@ public class NZTides extends Activity {
      * Display tide records using loaded tide data
      */
     private void displayTideRecordsFromData(StringBuilder outputString, List<TideRecord> tides, String port, long currentTimeSeconds) {
-        SimpleTideService tideService = SimpleTideService.getInstance();
+        TideService tideService = TideService.getInstance();
         
         // Get tides for next 30 days (roughly 120 tides)
         long endTime = currentTimeSeconds + (30 * 24 * 3600);
