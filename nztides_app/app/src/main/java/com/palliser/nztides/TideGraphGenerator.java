@@ -10,13 +10,12 @@ public class TideGraphGenerator {
     /**
      * Generate ASCII art tide graph
      */
-    public static String generateTideGraph(float previousHeight, float nextHeight, 
-                                         long currentTimeSeconds, long previousTideTime, 
-                                         long nextTideTime) {
+    public static String generateTideGraph(TideRecord previousTide, TideRecord nextTide, 
+                                         long currentTimeSeconds) {
         char[][] graph = new char[GRAPH_ROWS][GRAPH_COLS + 1];
         initialiseGraph(graph);
-        createTideGraph(graph, previousHeight, nextHeight);
-        markCurrentPosition(graph, currentTimeSeconds, previousTideTime, nextTideTime);
+        createTideGraph(graph, previousTide.height, nextTide.height);
+        markCurrentPosition(graph, currentTimeSeconds, previousTide.timestamp, nextTide.timestamp);
         
         return graphToString(graph);
     }

@@ -4,28 +4,28 @@ package com.palliser.nztides;
  * Represents the next tide event with timing information
  */
 public class NextTideInfo {
-    private final boolean isHighTide;
-    private final long timestamp;
-    private final float height;
+    private final TideRecord tideRecord;
     private final int secondsUntilTide;
     
-    public NextTideInfo(boolean isHighTide, long timestamp, float height, int secondsUntilTide) {
-        this.isHighTide = isHighTide;
-        this.timestamp = timestamp;
-        this.height = height;
+    public NextTideInfo(TideRecord tideRecord, int secondsUntilTide) {
+        this.tideRecord = tideRecord;
         this.secondsUntilTide = secondsUntilTide;
     }
     
     public boolean isHighTide() {
-        return isHighTide;
+        return tideRecord.isHighTide;
     }
 
     public long getTimestamp() {
-        return timestamp;
+        return tideRecord.timestamp;
     }
     
     public float getHeight() {
-        return height;
+        return tideRecord.height;
+    }
+    
+    public TideRecord getTideRecord() {
+        return tideRecord;
     }
     
     public int getSecondsUntilTide() {
@@ -36,7 +36,7 @@ public class NextTideInfo {
      * Gets a formatted string for the tide type
      */
     public String getTideTypeString() {
-        return isHighTide ? "High Tide" : "Low Tide";
+        return tideRecord.isHighTide ? "High Tide" : "Low Tide";
     }
     
     /**
@@ -53,7 +53,7 @@ public class NextTideInfo {
     @Override
     public String toString() {
         return String.format("NextTideInfo{%s at %s, height=%.2fm, in %ds}", 
-                getTideTypeString(), TideFormatter.formatHourMinute(timestamp), 
-                height, secondsUntilTide);
+                getTideTypeString(), TideFormatter.formatHourMinute(tideRecord.timestamp), 
+                tideRecord.height, secondsUntilTide);
     }
 }

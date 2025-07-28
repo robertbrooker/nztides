@@ -92,8 +92,7 @@ public class NZTides extends Activity {
             
             // Generate tide graph
             String tideGraphStr = TideGraphGenerator.generateTideGraph(
-                interval.previous.height, interval.next.height, 
-                currentTimeSeconds, interval.previous.timestamp, interval.next.timestamp);
+                interval.previous, interval.next, currentTimeSeconds);
             
             // Start populating output string
             outputString.append("[").append(port).append("] ")
@@ -110,8 +109,7 @@ public class NZTides extends Activity {
             outputString.append("---------------\n");
             
             displayTideTimings(outputString, currentTimeSeconds, 
-                               interval.previous.timestamp, interval.next.timestamp,
-                               interval.previous.height, interval.next.height);
+                               interval.previous, interval.next);
             outputString.append("\n");
             
             // Display ASCII tide graph
@@ -313,23 +311,22 @@ public class NZTides extends Activity {
      * Display timing information for tides
      */
     private void displayTideTimings(StringBuilder outputString, long currentTimeSeconds,
-                                    long previousTideTime, long nextTideTime,
-                                    float previousTideHeight, float nextTideHeight) {
-        long timeToPrevious = (currentTimeSeconds - previousTideTime);
-        long timeToNext = (nextTideTime - currentTimeSeconds);
-        boolean isHighTideNext = (nextTideHeight > previousTideHeight);
+                                    TideRecord previousTide, TideRecord nextTide) {
+        long timeToPrevious = (currentTimeSeconds - previousTide.timestamp);
+        long timeToNext = (nextTide.timestamp - currentTimeSeconds);
+        boolean isHighTideNext = (nextTide.height > previousTide.height);
 
         if (timeToPrevious < timeToNext) {
             if (isHighTideNext) {
-                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(previousTideTime)).append(" (").append(previousTideHeight).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
+                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(previousTide.timestamp)).append(" (").append(previousTide.height).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
             } else {
-                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(previousTideTime)).append(" (").append(previousTideHeight).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
+                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(previousTide.timestamp)).append(" (").append(previousTide.height).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
             }
         } else {
             if (isHighTideNext) {
-                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(nextTideTime)).append(" (").append(nextTideHeight).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
+                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(nextTide.timestamp)).append(" (").append(nextTide.height).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
             } else {
-                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(nextTideTime)).append(" (").append(nextTideHeight).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
+                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(nextTide.timestamp)).append(" (").append(nextTide.height).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
             }
         }
     }

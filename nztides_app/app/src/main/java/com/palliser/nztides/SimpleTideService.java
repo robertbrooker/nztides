@@ -190,8 +190,7 @@ public class SimpleTideService {
             
             int secondsUntilNextTide = (int) (nextTide.timestamp - currentTime);
             
-            return new NextTideInfo(nextTide.isHighTide, (int) nextTide.timestamp, 
-                                  nextTide.height, secondsUntilNextTide);
+            return new NextTideInfo(nextTide, secondsUntilNextTide);
                                   
         } catch (Exception e) {
             Log.e(TAG, "Error calculating next tide info", e);
