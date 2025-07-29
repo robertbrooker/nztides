@@ -56,27 +56,30 @@ public class TideNotificationService extends Service {
         
         try {
             // Load tide data directly for this port
-            java.util.List<com.palliser.nztides.TideRecord> tides = 
-                tideService.loadPortData(getAssets(), currentPort);
-            
-            if (tides != null && !tides.isEmpty()) {
-                long currentTime = System.currentTimeMillis() / 1000;
-                NextTideInfo nextTide = tideService.getNextTideInfo(tides, currentTime);
+            String filename = currentPort + ".tdat";
+            try (java.io.InputStream inputStream = getAssets().open(filename, 1)) {
+                java.util.List<com.palliser.nztides.TideRecord> tides = 
+                    tideService.loadPortData(inputStream);
                 
-                if (nextTide != null) {
-                    notificationHelper.showTideNotification(nextTide, currentPort);
-                    Log.d(TAG, "Updated notification for " + currentPort + ": " + nextTide);
-                } else {
-                    // Show error notification
+                if (tides != null && !tides.isEmpty()) {
+                    long currentTime = System.currentTimeMillis() / 1000;
+                    NextTideInfo nextTide = tideService.getNextTideInfo(tides, currentTime);
+                    
+                    if (nextTide != null) {
+                        notificationHelper.showTideNotification(nextTide, currentPort);
+                        Log.d(TAG, "Updated notification for " + currentPort + ": " + nextTide);
+                    } else {
+                        // Show error notification
                     notificationHelper.showErrorNotification(currentPort, 
                             getString(R.string.error_calculating_tides));
                     Log.w(TAG, "Failed to calculate tide info for " + currentPort);
                 }
-            } else {
-                // Show error notification
-                notificationHelper.showErrorNotification(currentPort, 
-                        "No tide data available");
-                Log.w(TAG, "No tide data available for " + currentPort);
+                } else {
+                    // Show error notification
+                    notificationHelper.showErrorNotification(currentPort, 
+                            "No tide data available");
+                    Log.w(TAG, "No tide data available for " + currentPort);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error updating notification", e);

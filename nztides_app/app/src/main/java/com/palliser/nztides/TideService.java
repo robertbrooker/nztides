@@ -1,10 +1,10 @@
 package com.palliser.nztides;
 
-import android.content.res.AssetManager;
 import android.util.Log;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,16 +36,14 @@ public class TideService {
     }
     
     /**
-     * Loads tide data for a specific port from a .tdat file
-     * @param assetManager AssetManager to read from
-     * @param portName Name of the port (without .tdat extension)
+     * Loads tide data for a specific port from an InputStream
+     * @param inputStream InputStream to read from
      * @return List of TideRecord objects, or null if loading fails
      */
-    public List<TideRecord> loadPortData(AssetManager assetManager, String portName) {
-        String filename = portName + ".tdat";
+    public List<TideRecord> loadPortData(InputStream inputStream) {
         List<TideRecord> tideRecords = new ArrayList<>();
         
-        try (DataInputStream stream = new DataInputStream(assetManager.open(filename, 1))) {
+        try (DataInputStream stream = new DataInputStream(inputStream)) {
             // Read and skip station name
             stream.readLine();
             
@@ -55,10 +53,7 @@ public class TideService {
             // Read number of records
             int numRecords = swapBytes(stream.readInt());
             
-            Log.d(TAG, "Loading " + numRecords + " records for " + filename);
-            
             if (numRecords < 2) {
-                Log.w(TAG, "Insufficient tide records in file: " + filename);
                 return null;
             }
             
@@ -94,21 +89,11 @@ public class TideService {
                     tideRecords.add(record);
                     
                 } catch (IOException e) {
-                    Log.w(TAG, "Error reading tide record " + i + " from " + filename, e);
                     break;
                 }
             }
             
-            // Validate that we read all expected records
-            if (tideRecords.size() != numRecords) {
-                Log.w(TAG, "Expected " + numRecords + " records but loaded " + 
-                      tideRecords.size() + " for " + filename);
-            }
-            
-            Log.i(TAG, "Successfully loaded " + tideRecords.size() + " tide records for " + portName);
-            
         } catch (IOException e) {
-            Log.e(TAG, "Error reading tide data file: " + filename, e);
             return null;
         }
         

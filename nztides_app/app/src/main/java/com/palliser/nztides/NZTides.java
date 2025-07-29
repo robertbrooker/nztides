@@ -22,6 +22,7 @@ import com.palliser.nztides.notification.NotificationSettingsActivity;
 import com.palliser.nztides.notification.TideNotificationService;
 import com.palliser.nztides.notification.TideUpdateReceiver;
 
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -46,12 +47,15 @@ public class NZTides extends Activity {
         
         try {
             // Load tide data directly
-            List<TideRecord> tides = tideService.loadPortData(getAssets(), port);
-            if (tides == null || tides.isEmpty()) {
-                return "No tide data available for " + port;
+            String filename = port + ".tdat";
+            try (InputStream inputStream = getAssets().open(filename, 1)) {
+                List<TideRecord> tides = tideService.loadPortData(inputStream);
+                if (tides == null || tides.isEmpty()) {
+                    return "No tide data available for " + port;
+                }
+                
+                return calculateTideOutputFromData(port, tides, System.currentTimeMillis() / 1000);
             }
-            
-            return calculateTideOutputFromData(port, tides);
             
         } catch (Exception e) {
             Log.e(TAG, "Error loading tide data for " + port, e);
@@ -61,14 +65,16 @@ public class NZTides extends Activity {
     
     /**
      * Calculate tide output using loaded tide data
+     * @param port The port name
+     * @param tides The tide data
+     * @param currentTimeSeconds Current time in seconds (for testing)
+     * @return Formatted tide output string
      */
-    private String calculateTideOutputFromData(String port, List<TideRecord> tides) {
+    public String calculateTideOutputFromData(String port, List<TideRecord> tides, long currentTimeSeconds) {
         try {
             TideService tideService = TideService.getInstance();
             
             StringBuilder outputString = new StringBuilder();
-            Date currentTime = new Date();
-            long currentTimeSeconds = currentTime.getTime() / 1000;
             
             // Check if we have valid data for current time
             if (!tideService.isValidAt(tides, currentTimeSeconds)) {
