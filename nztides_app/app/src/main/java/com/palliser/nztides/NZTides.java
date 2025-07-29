@@ -24,7 +24,6 @@ import com.palliser.nztides.notification.TideUpdateReceiver;
 
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -122,7 +121,7 @@ public class NZTides extends Activity {
             outputString.append(tideGraphStr);
             
             // Display tide records from loaded data
-            displayTideRecordsFromData(outputString, tides, port, currentTimeSeconds);
+            displayTideRecordsFromData(outputString, tides, currentTimeSeconds);
             
             // Find the latest tide timestamp for "last tide" message
             long latestTimestamp = 0;
@@ -340,7 +339,7 @@ public class NZTides extends Activity {
     /**
      * Display tide records using loaded tide data
      */
-    private void displayTideRecordsFromData(StringBuilder outputString, List<TideRecord> tides, String port, long currentTimeSeconds) {
+    private void displayTideRecordsFromData(StringBuilder outputString, List<TideRecord> tides, long currentTimeSeconds) {
         TideService tideService = TideService.getInstance();
         
         // Get tides for next 30 days (roughly 120 tides)
