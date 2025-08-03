@@ -8,7 +8,7 @@ import android.util.Log;
 
 import com.palliser.nztides.TideService;
 import com.palliser.nztides.Constants;
-import com.palliser.nztides.NextTideInfo;
+import com.palliser.nztides.models.NextTideInfo;
 import com.palliser.nztides.R;
 
 /**
@@ -58,7 +58,7 @@ public class TideNotificationService extends Service {
             // Load tide data directly for this port
             String filename = currentPort + ".tdat";
             try (java.io.InputStream inputStream = getAssets().open(filename, 1)) {
-                java.util.List<com.palliser.nztides.TideRecord> tides = 
+                java.util.List<com.palliser.nztides.models.TideRecord> tides = 
                     tideService.loadPortData(inputStream);
                 
                 if (tides != null && !tides.isEmpty()) {

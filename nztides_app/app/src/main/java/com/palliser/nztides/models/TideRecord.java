@@ -1,4 +1,4 @@
-package com.palliser.nztides;
+package com.palliser.nztides.models;
 
 /**
  * Immutable tide record representing a single tide event

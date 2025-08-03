@@ -17,12 +17,14 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.palliser.nztides.models.TideData;
+import com.palliser.nztides.models.TideRecord;
 import com.palliser.nztides.notification.NotificationChannelManager;
-import com.palliser.nztides.notification.NotificationSettingsActivity;
 import com.palliser.nztides.notification.TideNotificationService;
 import com.palliser.nztides.notification.TideUpdateReceiver;
+import com.palliser.nztides.notification.NotificationSettingsActivity;
 
-import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -32,134 +34,131 @@ public class NZTides extends Activity {
 
     public static final int MENU_ITEM_ABOUT = Menu.FIRST + 1;
     public static final int MENU_ITEM_NOTIFICATIONS = Menu.FIRST + 2;
+    public static final int MENU_ITEM_FIRST_PORT = MENU_ITEM_NOTIFICATIONS + 1;
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1001;
     private static final String TAG = "NZTides";
 
     private String currentPort;
     private String[] recentPorts = new String[0];
 
+    private List<TideRecord> currentPortTides;
+    private CurrentTidesService currentTidesService;
+
     private static final String[] PORT_DISPLAY_NAMES = {"Akaroa", "Anakakata Bay", "Anawhata", "Auckland", "Ben Gunn Wharf", "Bluff", "Castlepoint", "Charleston", "Dargaville", "Deep Cove", "Dog Island", "Dunedin", "Elaine Bay", "Elie Bay", "Fishing Rock - Raoul Island", "Flour Cask Bay", "Fresh Water Basin", "Gisborne", "Green Island", "Halfmoon Bay - Oban", "Havelock", "Helensville", "Huruhi Harbour", "Jackson Bay", "Kaikōura", "Kaingaroa - Chatham Island", "Kaiteriteri", "Kaituna River Entrance", "Kawhia", "Korotiti Bay", "Leigh", "Long Island", "Lottin Point - Wakatiri", "Lyttelton", "Mana Marina", "Man o'War Bay", "Manu Bay", "Māpua", "Marsden Point", "Matiatia Bay", "Motuara Island", "Moturiki Island", "Napier", "Nelson", "New Brighton Pier", "North Cape - Otou", "Oamaru", "Ōkukari Bay", "Omaha Bridge", "Ōmokoroa", "Onehunga", "Opononi", "Ōpōtiki Wharf", "Opua", "Owenga - Chatham Island", "Paratutae Island", "Picton", "Port Chalmers", "Port Ōhope Wharf", "Port Taranaki", "Pouto Point", "Raglan", "Rangatira Point", "Rangitaiki River Entrance", "Richmond Bay", "Riverton - Aparima", "Scott Base", "Spit Wharf", "Sumner Head", "Tamaki River", "Tarakohe", "Tauranga", "Te Weka Bay", "Thames", "Timaru", "Town Basin", "Waihopai River Entrance", "Waitangi - Chatham Island", "Weiti River Entrance", "Welcombe Bay", "Wellington", "Westport", "Whakatāne", "Whanganui River Entrance", "Whangārei", "Whangaroa", "Whitianga", "Wilson Bay"};
 
-    public String calculateTideOutput(String port) {
-        // Use tide service - loads fresh data each time
-        TideService tideService = TideService.getInstance();
-        
+    public void loadDataForPortAndDisplayOnScreen(String port) {
+
+        String outputString;
+
         try {
-            // Load tide data directly
-            String filename = port + ".tdat";
-            try (InputStream inputStream = getAssets().open(filename, 1)) {
-                List<TideRecord> tides = tideService.loadPortData(inputStream);
-                if (tides == null || tides.isEmpty()) {
-                    return "No tide data available for " + port;
-                }
-                
-                return calculateTideOutputFromData(port, tides, System.currentTimeMillis() / 1000);
+            // Always load fresh data for new port
+            if (currentTidesService == null) {
+                currentTidesService = new CurrentTidesService(this);
             }
-            
+            TideData tideData = currentTidesService.loadTideData(port, System.currentTimeMillis() / 1000);
+            currentPortTides = tideData.allTides;
+
+            outputString = getTideScreenDisplayText(tideData);
+
+        } catch (CurrentTidesService.TideDataException e) {
+            outputString = e.getMessage();
         } catch (Exception e) {
             Log.e(TAG, "Error loading tide data for " + port, e);
-            return "Error loading tide data for " + port + ": " + e.getMessage();
+            outputString = "Error loading tide data for " + port + ": " + e.getMessage();
         }
+
+        setContentView(R.layout.main);
+        TextView tideTextView = findViewById(R.id.tide_text_view);
+        tideTextView.setText(outputString);
+    }
+    
+    private String refreshTideOutput() throws CurrentTidesService.TideDataException {
+        TideData tideData = currentTidesService.refreshTideData(currentPort, currentPortTides, 
+            System.currentTimeMillis() / 1000);
+        return getTideScreenDisplayText(tideData);
     }
     
     /**
-     * Calculate tide output using loaded tide data
-     * @param port The port name
-     * @param tides The tide data
-     * @param currentTimeSeconds Current time in seconds (for testing)
+     * Calculate tide output using loaded and validated tide data
+     * @param tideData Complete validated tide data
      * @return Formatted tide output string
      */
-    public String calculateTideOutputFromData(String port, List<TideRecord> tides, long currentTimeSeconds) {
+    public String getTideScreenDisplayText(TideData tideData) {
         try {
-            TideService tideService = TideService.getInstance();
-            
             StringBuilder outputString = new StringBuilder();
-            
-            // Check if we have valid data for current time
-            if (!tideService.isValidAt(tides, currentTimeSeconds)) {
-                outputString.append("Tide data has expired. Please update the app for current predictions.");
-                return outputString.toString();
-            }
-            
-            TideInterval interval = tideService.getTideInterval(tides, currentTimeSeconds);
-            if (interval == null || !interval.isValid()) {
-                outputString.append("No tide data available for the current time at ").append(port);
-                return outputString.toString();
-            }
-            
-            // Calculate current tide using tide service
-            TideService.TideCalculation currentTideCalc = 
-                tideService.calculateCurrentTide(tides, currentTimeSeconds);
-            
-            if (currentTideCalc == null) {
-                return "Unable to calculate current tide for " + port;
-            }
-            
-            // Generate tide graph
-            String tideGraphStr = TideGraphGenerator.generateTideGraph(
-                interval.previous, interval.next, currentTimeSeconds);
-            
-            // Start populating output string
-            outputString.append("[").append(port).append("] ")
-                       .append(TideFormatter.formatCurrentHeight(currentTideCalc.height)).append("m");
-            
-            // Display up arrow or down arrow depending on whether tide is rising or falling
-            if (interval.previous.height < interval.next.height)
-                outputString.append(" ↑"); // up arrow
-            else
-                outputString.append(" ↓"); // down arrow
-            
-            outputString.append(TideFormatter.formatRiseRate(Math.abs(currentTideCalc.riseRate * 100)))
-                       .append(" cm/hr\n");
-            outputString.append("---------------\n");
-            
-            displayTideTimings(outputString, currentTimeSeconds, 
-                               interval.previous, interval.next);
-            outputString.append("\n");
-            
-            // Display ASCII tide graph
-            outputString.append(tideGraphStr);
-            
-            // Display tide records from loaded data
-            displayTideRecordsFromData(outputString, tides, currentTimeSeconds);
-            
-            // Find the latest tide timestamp for "last tide" message
-            long latestTimestamp = 0;
-            for (TideRecord tide : tides) {
-                if (tide.timestamp > latestTimestamp) {
-                    latestTimestamp = tide.timestamp;
-                }
-            }
-            
-            outputString.append("The last tide in this datafile occurs at:\n");
-            outputString.append(TideFormatter.formatFullDate(latestTimestamp));
-            
+
+            generateCurrentTideDetails(tideData, outputString);
+
+            generateTideGraph(tideData, outputString);
+
+            generateTideList(tideData, outputString);
+
             return outputString.toString();
             
         } catch (Exception e) {
             Log.e(TAG, "Error calculating tide output from data", e);
-            return "Error calculating tide data for " + port + ". Please try again.";
+            return "Error calculating tide data for " + tideData.port + ". Please try again.";
         }
     }
-    
+
+    private void generateTideList(TideData tideData, StringBuilder outputString) {
+        // Display tide records from loaded data
+        displayTideRecordsFromData(outputString, tideData.upcomingTides);
+
+        outputString.append("The last tide in this datafile occurs at:\n");
+        outputString.append(TideFormatter.formatFullDate(tideData.lastTideInData.timestamp));
+    }
+
+    private static void generateTideGraph(TideData tideData, StringBuilder outputString) {
+        // Generate tide graph
+        // Display ASCII tide graph
+        String tideGraphStr = TideGraphGenerator.generateTideGraph(
+                tideData.currentInterval.previous, tideData.currentInterval.next, tideData.currentTimeSeconds);
+        outputString.append(tideGraphStr);
+    }
+
+    private void generateCurrentTideDetails(TideData tideData, StringBuilder outputString) {
+        // Start populating output string
+        outputString.append("[").append(tideData.port).append("] ")
+                   .append(TideFormatter.formatCurrentHeight(tideData.currentTideCalculation.height)).append("m");
+
+        // Display up arrow or down arrow depending on whether tide is rising or falling
+        if (tideData.currentInterval.incomingTide)
+            outputString.append(" ↑"); // up arrow
+        else
+            outputString.append(" ↓"); // down arrow
+
+        outputString.append(TideFormatter.formatRiseRate(Math.abs(tideData.currentTideCalculation.riseRate * 100)))
+                   .append(" cm/hr\n");
+        outputString.append("---------------\n");
+
+        displayTideTimings(outputString, tideData);
+        outputString.append("\n");
+    }
+
     /**
      * Called when the activity is first created.
      */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate called");
 
         // Restore current port from settings file
         SharedPreferences settings = getSharedPreferences(Constants.PREFS_NAME, 0);
         currentPort = settings.getString("CurrentPort", "Auckland");
         loadRecentPorts();
+        Log.d(TAG, "Current port loaded: " + currentPort);
+        Log.d(TAG, "Recent ports loaded: " + Arrays.toString(recentPorts));
 
         // If no recent ports, add the current port
         if (recentPorts.length == 0) {
             updateRecentPorts(currentPort);
         }
 
-        setContentView(R.layout.main);
+        Log.d(TAG, "Calculating tide output for current port: " + currentPort);
+        loadDataForPortAndDisplayOnScreen(currentPort);
+        Log.d(TAG, "Tide output calculated for port: " + currentPort);
 
         // Initialize notification system
         requestNotificationPermissionIfNeeded();
@@ -231,7 +230,7 @@ public class NZTides extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        int menuIndex = Menu.FIRST;
+        int menuIndex = MENU_ITEM_FIRST_PORT;
         if (recentPorts.length > 0) {
             for (String recentPort : recentPorts) {
                 menu.add(0, menuIndex++, 0, recentPort);
@@ -255,25 +254,7 @@ public class NZTides extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         String title = (String) item.getTitle();
-        // Check if selected port is in recentPorts or portdisplaynames
-        for (String port : PORT_DISPLAY_NAMES) {
-            if (port.equals(title)) {
-                currentPort = port;
-                updateRecentPorts(port);
-                invalidateOptionsMenu(); // Rebuild menu with updated recent ports
-                this.onResume();
-                return true;
-            }
-        }
-        for (String port : recentPorts) {
-            if (port.equals(title)) {
-                currentPort = port;
-                updateRecentPorts(port);
-                invalidateOptionsMenu(); // Rebuild menu with updated recent ports
-                this.onResume();
-                return true;
-            }
-        }
+        
         switch (id) {
             case MENU_ITEM_ABOUT:
                 TextView tv = new TextView(this);
@@ -286,7 +267,14 @@ public class NZTides extends Activity {
                 startActivity(new Intent(this, NotificationSettingsActivity.class));
                 return true;
             default:
-                return super.onOptionsItemSelected(item);
+                // Handle port selection
+                currentPort = title;
+                updateRecentPorts(title);
+                invalidateOptionsMenu(); // Rebuild menu with updated recent ports
+
+                loadDataForPortAndDisplayOnScreen(currentPort);
+
+                return true;
         }
     }
 
@@ -296,8 +284,15 @@ public class NZTides extends Activity {
         setContentView(R.layout.main);
 
         TextView tideTextView = findViewById(R.id.tide_text_view);
-        String outputString = calculateTideOutput(currentPort);
-        tideTextView.setText(outputString);
+        try {
+            String outputString = refreshTideOutput();
+            tideTextView.setText(outputString);
+        } catch (CurrentTidesService.TideDataException e) {
+            tideTextView.setText(e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "Error refreshing tide data", e);
+            tideTextView.setText("Error refreshing tide data: " + e.getMessage());
+        }
     }
 
     @Override
@@ -313,39 +308,33 @@ public class NZTides extends Activity {
     }
 
     /**
-     * Display timing information for tides
+     * Display timing information for tides using TideData
      */
-    private void displayTideTimings(StringBuilder outputString, long currentTimeSeconds,
-                                    TideRecord previousTide, TideRecord nextTide) {
-        long timeToPrevious = (currentTimeSeconds - previousTide.timestamp);
-        long timeToNext = (nextTide.timestamp - currentTimeSeconds);
-        boolean isHighTideNext = (nextTide.height > previousTide.height);
-
-        if (timeToPrevious < timeToNext) {
-            if (isHighTideNext) {
-                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(previousTide.timestamp)).append(" (").append(previousTide.height).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
-            } else {
-                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(previousTide.timestamp)).append(" (").append(previousTide.height).append("m) ").append(TideFormatter.formatDuration(timeToPrevious)).append(" ago\n");
-            }
-        } else {
-            if (isHighTideNext) {
-                outputString.append("HIGH tide ").append(TideFormatter.formatHourMinute(nextTide.timestamp)).append(" (").append(nextTide.height).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
-            } else {
-                outputString.append("Low tide ").append(TideFormatter.formatHourMinute(nextTide.timestamp)).append(" (").append(nextTide.height).append("m) in ").append(TideFormatter.formatDuration(timeToNext)).append("\n");
-            }
-        }
+    private void displayTideTimings(StringBuilder outputString, TideData tideData) {
+        TideRecord closestTide = tideData.currentInterval.closestTide;
+        boolean isClosestInFuture = tideData.currentInterval.isClosestTideInTheFuture;
+        long timeToClosest = isClosestInFuture ? tideData.currentInterval.timeToNext : tideData.currentInterval.timeToPrevious;
+        
+        String tideType = closestTide.isHighTide ? "HIGH tide" : "Low tide";
+        String timeText = isClosestInFuture ? "in " : "";
+        String agoText = isClosestInFuture ? "" : " ago";
+        
+        outputString.append(tideType)
+                   .append(" ")
+                   .append(TideFormatter.formatHourMinute(closestTide.timestamp))
+                   .append(" (")
+                   .append(closestTide.height)
+                   .append("m) ")
+                   .append(timeText)
+                   .append(TideFormatter.formatDuration(timeToClosest))
+                   .append(agoText)
+                   .append("\n");
     }
 
     /**
-     * Display tide records using loaded tide data
+     * Display tide records using pre-loaded upcoming tides
      */
-    private void displayTideRecordsFromData(StringBuilder outputString, List<TideRecord> tides, long currentTimeSeconds) {
-        TideService tideService = TideService.getInstance();
-        
-        // Get tides for next 30 days (roughly 120 tides)
-        long endTime = currentTimeSeconds + (30 * 24 * 3600);
-        TideRecord[] upcomingTides = tideService.getTidesInRange(tides, currentTimeSeconds, endTime);
-        
+    private void displayTideRecordsFromData(StringBuilder outputString, TideRecord[] upcomingTides) {
         if (upcomingTides.length == 0) {
             outputString.append("\nNo upcoming tide data available.\n");
             return;

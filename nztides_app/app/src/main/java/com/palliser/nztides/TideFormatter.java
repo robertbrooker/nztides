@@ -1,5 +1,7 @@
 package com.palliser.nztides;
 
+import com.palliser.nztides.models.TideRecord;
+
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;

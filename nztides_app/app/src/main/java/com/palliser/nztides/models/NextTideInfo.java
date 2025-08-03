@@ -1,4 +1,6 @@
-package com.palliser.nztides;
+package com.palliser.nztides.models;
+
+import com.palliser.nztides.TideFormatter;
 
 /**
  * Represents the next tide event with timing information

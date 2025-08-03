@@ -1,7 +1,9 @@
 package com.palliser.nztides;
 
+import com.palliser.nztides.models.TideRecord;
+
 /**
- * Utility class for creating ASCII art tide graphs
+ * Generates ASCII art representation of tide curves
  */
 public class TideGraphGenerator {
     private static final int GRAPH_ROWS = 10;

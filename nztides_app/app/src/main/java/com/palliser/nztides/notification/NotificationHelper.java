@@ -9,7 +9,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 
 import com.palliser.nztides.Constants;
-import com.palliser.nztides.NextTideInfo;
+import com.palliser.nztides.models.NextTideInfo;
 import com.palliser.nztides.NZTides;
 import com.palliser.nztides.R;
 import com.palliser.nztides.TideFormatter;

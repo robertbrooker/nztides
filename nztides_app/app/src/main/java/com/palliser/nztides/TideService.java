@@ -2,6 +2,10 @@ package com.palliser.nztides;
 
 import android.util.Log;
 
+import com.palliser.nztides.models.TideRecord;
+import com.palliser.nztides.models.TideInterval;
+import com.palliser.nztides.models.NextTideInfo;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,9 +42,10 @@ public class TideService {
     /**
      * Loads tide data for a specific port from an InputStream
      * @param inputStream InputStream to read from
-     * @return List of TideRecord objects, or null if loading fails
+     * @return List of TideRecord objects
+     * @throws TideDataLoadException if loading fails or insufficient data
      */
-    public List<TideRecord> loadPortData(InputStream inputStream) {
+    public List<TideRecord> loadPortData(InputStream inputStream) throws TideDataLoadException {
         List<TideRecord> tideRecords = new ArrayList<>();
         
         try (DataInputStream stream = new DataInputStream(inputStream)) {
@@ -54,7 +59,7 @@ public class TideService {
             int numRecords = swapBytes(stream.readInt());
             
             if (numRecords < 2) {
-                return null;
+                throw new TideDataLoadException("Insufficient tide records: " + numRecords + " (minimum 2 required)");
             }
             
             // Pre-read first two tides to establish pattern
@@ -94,7 +99,7 @@ public class TideService {
             }
             
         } catch (IOException e) {
-            return null;
+            throw new TideDataLoadException("Failed to read tide data: " + e.getMessage());
         }
         
         return tideRecords;
@@ -104,11 +109,12 @@ public class TideService {
      * Gets the tide interval surrounding the given timestamp for a port
      * @param tides List of tide records (must be sorted by timestamp)
      * @param timestamp The timestamp to search around
-     * @return TideInterval containing previous and next tides, or null if not found
+     * @return TideInterval containing previous and next tides
+     * @throws TideDataException if interval cannot be found
      */
-    public TideInterval getTideInterval(List<TideRecord> tides, long timestamp) {
+    public TideInterval getTideInterval(List<TideRecord> tides, long timestamp) throws TideDataException {
         if (tides == null || tides.size() < 2) {
-            return null;
+            throw new TideDataException("Insufficient tide data for interval calculation");
         }
         
         // Convert to array for binary search
@@ -140,21 +146,26 @@ public class TideService {
             next = index < tidesArray.length - 1 ? tidesArray[index + 1] : null;
         }
         
-        return new TideInterval(previous, next);
+        if (previous == null || next == null) {
+            throw new TideDataException("Cannot find valid tide interval for timestamp");
+        }
+        
+        return new TideInterval(previous, next, timestamp);
     }
     
     /**
      * Gets the next tide information for a port at the given time
      * @param tides List of tide records (must be sorted by timestamp)
      * @param currentTime The current timestamp in seconds
-     * @return NextTideInfo or null if not available
+     * @return NextTideInfo containing next tide details
+     * @throws TideDataException if next tide information is not available
      */
-    public NextTideInfo getNextTideInfo(List<TideRecord> tides, long currentTime) {
+    public NextTideInfo getNextTideInfo(List<TideRecord> tides, long currentTime) throws TideDataException {
         try {
             // Get the current tide interval
             TideInterval interval = getTideInterval(tides, currentTime);
             if (interval == null || !interval.isValid()) {
-                return null;
+                throw new TideDataException("Invalid tide interval for current time: " + currentTime);
             }
             
             // The next tide is always interval.next in a valid interval
@@ -168,7 +179,7 @@ public class TideService {
                     }
                 }
                 if (nextTide == null) {
-                    return null;
+                    throw new TideDataException("No future tide information available");
                 }
             }
             
@@ -178,7 +189,7 @@ public class TideService {
                                   
         } catch (Exception e) {
             Log.e(TAG, "Error calculating next tide info", e);
-            return null;
+            throw new TideDataException("Error calculating next tide info: " + e.getMessage());
         }
     }
     
@@ -186,13 +197,14 @@ public class TideService {
      * Calculates current tide height and rate using cosine interpolation
      * @param tides List of tide records (must be sorted by timestamp)
      * @param currentTimeSeconds Current time in seconds
-     * @return TideCalculation result or null if not available
+     * @return TideCalculation result
+     * @throws TideDataException if calculation fails
      */
-    public TideCalculation calculateCurrentTide(List<TideRecord> tides, long currentTimeSeconds) {
+    public TideCalculation calculateCurrentTide(List<TideRecord> tides, long currentTimeSeconds) throws TideDataException {
         try {
             TideInterval interval = getTideInterval(tides, currentTimeSeconds);
             if (interval == null || !interval.isValid()) {
-                return null;
+                throw new TideDataException("Invalid tide interval for current time: " + currentTimeSeconds);
             }
             
             // Cosine interpolation between tides
@@ -207,7 +219,7 @@ public class TideService {
             
         } catch (Exception e) {
             Log.e(TAG, "Error calculating current tide", e);
-            return null;
+            throw new TideDataException("Error calculating current tide: " + e.getMessage());
         }
     }
     
@@ -264,6 +276,24 @@ public class TideService {
         int b3 = (value >> 16) & 0xff;
         int b4 = (value >> 24) & 0xff;
         return b1 << 24 | b2 << 16 | b3 << 8 | b4;
+    }
+    
+    /**
+     * Exception for tide data loading errors
+     */
+    public static class TideDataLoadException extends Exception {
+        public TideDataLoadException(String message) {
+            super(message);
+        }
+    }
+    
+    /**
+     * Exception for tide data operation errors
+     */
+    public static class TideDataException extends Exception {
+        public TideDataException(String message) {
+            super(message);
+        }
     }
     
     /**

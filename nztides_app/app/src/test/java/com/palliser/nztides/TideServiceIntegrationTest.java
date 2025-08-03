@@ -1,5 +1,9 @@
 package com.palliser.nztides;
 
+import com.palliser.nztides.models.TideRecord;
+import com.palliser.nztides.models.TideInterval;
+import com.palliser.nztides.TideService.TideDataException;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,7 +57,7 @@ public class TideServiceIntegrationTest {
     }
     
     @Test
-    public void testTideService_Auckland_WithRealData() {
+    public void testTideService_Auckland_WithRealData() throws TideDataException {
         // Given: Real Auckland tide data
         String port = "Auckland";
         List<TideRecord> tides = loadPortDataFromFile(port);
@@ -71,33 +75,37 @@ public class TideServiceIntegrationTest {
         assertTrue("Data should be valid at test time", 
                    tideService.isValidAt(tides, testTime));
         
-        TideInterval interval = tideService.getTideInterval(tides, testTime);
-        assertNotNull("Should get valid tide interval", interval);
-        assertTrue("Interval should be valid", interval.isValid());
-        
-        TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTime);
-        assertNotNull("Should calculate current tide", calc);
-        assertTrue("Height should be reasonable", calc.height > 0 && calc.height < 10);
-        assertTrue("Rise rate should be reasonable", Math.abs(calc.riseRate) < 1.0);
-        
-        // Verify we can get tide range
-        long endTime = testTime + (7 * 24 * 3600); // 7 days
-        TideRecord[] tidesInRange = tideService.getTidesInRange(tides, testTime, endTime);
-        assertTrue("Should have tides in 7-day range", tidesInRange.length > 0);
-        
-        System.out.println("=== Auckland Test Results ===");
-        System.out.println("Port: " + port);
-        System.out.println("Test time: " + new java.util.Date(testTime * 1000));
-        System.out.println("Current height: " + calc.height + "m");
-        System.out.println("Rise rate: " + calc.riseRate + "m/hr");
-        System.out.println("Previous tide: " + new java.util.Date(interval.previous.timestamp * 1000) + " (" + interval.previous.height + "m)");
-        System.out.println("Next tide: " + new java.util.Date(interval.next.timestamp * 1000) + " (" + interval.next.height + "m)");
-        System.out.println("Tides in next 7 days: " + tidesInRange.length);
-        System.out.println("=== End Auckland Test ===");
+        try {
+            TideInterval interval = tideService.getTideInterval(tides, testTime);
+            assertNotNull("Should get valid tide interval", interval);
+            assertTrue("Interval should be valid", interval.isValid());
+            
+            TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTime);
+            assertNotNull("Should calculate current tide", calc);
+            assertTrue("Height should be reasonable", calc.height > 0 && calc.height < 10);
+            assertTrue("Rise rate should be reasonable", Math.abs(calc.riseRate) < 1.0);
+            
+            // Verify we can get tide range
+            long endTime = testTime + (7 * 24 * 3600); // 7 days
+            TideRecord[] tidesInRange = tideService.getTidesInRange(tides, testTime, endTime);
+            assertTrue("Should have tides in 7-day range", tidesInRange.length > 0);
+            
+            System.out.println("=== Auckland Test Results ===");
+            System.out.println("Port: " + port);
+            System.out.println("Test time: " + new java.util.Date(testTime * 1000));
+            System.out.println("Current height: " + calc.height + "m");
+            System.out.println("Rise rate: " + calc.riseRate + "m/hr");
+            System.out.println("Previous tide: " + new java.util.Date(interval.previous.timestamp * 1000) + " (" + interval.previous.height + "m)");
+            System.out.println("Next tide: " + new java.util.Date(interval.next.timestamp * 1000) + " (" + interval.next.height + "m)");
+            System.out.println("Tides in next 7 days: " + tidesInRange.length);
+            System.out.println("=== End Auckland Test ===");
+        } catch (TideDataException e) {
+            fail("Should not throw TideDataException for valid data: " + e.getMessage());
+        }
     }
     
     @Test
-    public void testTideService_Wellington_WithRealData() {
+    public void testTideService_Wellington_WithRealData() throws TideDataException {
         // Given: Real Wellington tide data (if available)
         String port = "Wellington";
         List<TideRecord> tides = loadPortDataFromFile(port);
@@ -115,23 +123,27 @@ public class TideServiceIntegrationTest {
         assertTrue("Data should be valid at test time", 
                    tideService.isValidAt(tides, testTime));
         
-        TideInterval interval = tideService.getTideInterval(tides, testTime);
-        assertNotNull("Should get valid tide interval", interval);
-        assertTrue("Interval should be valid", interval.isValid());
-        
-        TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTime);
-        assertNotNull("Should calculate current tide", calc);
-        assertTrue("Height should be reasonable", calc.height > 0 && calc.height < 10);
-        
-        System.out.println("=== Wellington Test Results ===");
-        System.out.println("Port: " + port);
-        System.out.println("Current height: " + calc.height + "m");
-        System.out.println("Rise rate: " + calc.riseRate + "m/hr");
-        System.out.println("=== End Wellington Test ===");
+        try {
+            TideInterval interval = tideService.getTideInterval(tides, testTime);
+            assertNotNull("Should get valid tide interval", interval);
+            assertTrue("Interval should be valid", interval.isValid());
+            
+            TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTime);
+            assertNotNull("Should calculate current tide", calc);
+            assertTrue("Height should be reasonable", calc.height > 0 && calc.height < 10);
+            
+            System.out.println("=== Wellington Test Results ===");
+            System.out.println("Port: " + port);
+            System.out.println("Current height: " + calc.height + "m");
+            System.out.println("Rise rate: " + calc.riseRate + "m/hr");
+            System.out.println("=== End Wellington Test ===");
+        } catch (TideDataException e) {
+            fail("Should not throw TideDataException for valid data: " + e.getMessage());
+        }
     }
     
     @Test
-    public void testTideService_WithExpiredData() {
+    public void testTideService_WithExpiredData() throws TideDataException {
         // Given: Real tide data but far future timestamp
         String port = "Auckland";
         List<TideRecord> tides = loadPortDataFromFile(port);
@@ -150,9 +162,14 @@ public class TideServiceIntegrationTest {
         // Then: Should indicate data is not valid at that time
         assertFalse("Data should not be valid for future timestamp", isValid);
         
-        TideInterval interval = tideService.getTideInterval(tides, futureTime);
-        if (interval != null) {
-            assertFalse("Interval should not be valid for expired data", interval.isValid());
+        try {
+            TideInterval interval = tideService.getTideInterval(tides, futureTime);
+            if (interval != null) {
+                assertFalse("Interval should not be valid for expired data", interval.isValid());
+            }
+        } catch (TideDataException e) {
+            // Expected for expired data - this is actually the correct behavior
+            System.out.println("Expected exception for expired data: " + e.getMessage());
         }
         
         System.out.println("=== Expired Data Test ===");
@@ -162,7 +179,7 @@ public class TideServiceIntegrationTest {
     }
     
     @Test
-    public void testTideService_MultipleTimePoints() {
+    public void testTideService_MultipleTimePoints() throws TideDataException {
         // Given: Real Auckland tide data
         String port = "Auckland";
         List<TideRecord> tides = loadPortDataFromFile(port);
@@ -186,19 +203,22 @@ public class TideServiceIntegrationTest {
             assertTrue("Data should be valid at time " + i, 
                        tideService.isValidAt(tides, testTimes[i]));
             
-            TideInterval interval = tideService.getTideInterval(tides, testTimes[i]);
-            assertNotNull("Should get interval for time " + i, interval);
-            assertTrue("Interval should be valid for time " + i, interval.isValid());
-            
-            TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTimes[i]);
-            assertNotNull("Should calculate tide for time " + i, calc);
-            assertTrue("Height should be reasonable for time " + i, 
-                       calc.height > 0 && calc.height < 10);
-            
-            System.out.println("=== Time Point " + i + " ===");
-            System.out.println("Time: " + new java.util.Date(testTimes[i] * 1000));
-            System.out.println("Height: " + calc.height + "m");
-            System.out.println("Rise rate: " + calc.riseRate + "m/hr");
+            try {
+                TideInterval interval = tideService.getTideInterval(tides, testTimes[i]);
+                assertNotNull("Should get interval for time " + i, interval);
+                assertTrue("Interval should be valid for time " + i, interval.isValid());
+                
+                TideService.TideCalculation calc = tideService.calculateCurrentTide(tides, testTimes[i]);
+                assertNotNull("Should calculate tide for time " + i, calc);
+                assertTrue("Height should be reasonable for time " + i, calc.height > 0 && calc.height < 10);
+                
+                System.out.println("=== Time Point " + i + " ===");
+                System.out.println("Time: " + new java.util.Date(testTimes[i] * 1000));
+                System.out.println("Height: " + calc.height + "m");
+                System.out.println("Rise rate: " + calc.riseRate + "m/hr");
+            } catch (TideDataException e) {
+                fail("Should not throw TideDataException for valid data at time " + i + ": " + e.getMessage());
+            }
         }
     }
     
