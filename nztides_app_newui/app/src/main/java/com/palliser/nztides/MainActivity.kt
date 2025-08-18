@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.Menu
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,9 +13,10 @@ import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+    // Use Compose defaults for system bar insets; no manual overrides
 
 
         setContent {
@@ -93,11 +93,17 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     topBar = {
                         TopAppBar(
+                            modifier = Modifier.height(75.dp),
                             title = { 
-                                Text(
-                                    "NZ Tides",
-                                    fontSize = 18.sp
-                                ) 
+                                Box(
+                                    modifier = Modifier.fillMaxHeight(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Text(
+                                        "NZ Tides",
+                                        fontSize = 18.sp
+                                    )
+                                }
                             },
                             actions = {
                                 MinimalDropdownMenu(
@@ -109,8 +115,7 @@ class MainActivity : ComponentActivity() {
                                 containerColor = Color.Black,
                                 titleContentColor = Color.White,
                                 actionIconContentColor = Color.White
-                            ),
-                            windowInsets = WindowInsets(0.dp)
+                            )
                         )
                     }
                 ) { innerPadding ->
@@ -489,7 +494,7 @@ class MainActivity : ComponentActivity() {
                 hightidenext = !hightidenext
                 outstring.append(
                     nformat1.format(h) + (if (hightidenext)
-                        " H " else " L ") + dformat.format(Date(1000L * told.toLong())) + '\n'
+                        " H " else " L ") + dformat.format(Date(1000L * t.toLong())) + '\n'
                 )
 
                 for (k in 0 until (35 * 4)) { //about a month of tides
